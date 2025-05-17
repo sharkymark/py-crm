@@ -570,7 +570,8 @@ def handle_opportunities_menu():
             if new_amount_input == 'back': continue
             new_amount = new_amount_input # Will be float or None
 
-            new_close_date_input = input(f"Enter new close date (YYYY-MM-DD, leave blank to keep '{opportunity['close_date'] or 'None']}', or 'back'): ").strip()
+            # Fix the f-string syntax here
+            new_close_date_input = input("Enter new close date (YYYY-MM-DD, leave blank to keep '{}', or 'back'): ".format(opportunity['close_date'] or 'None')).strip()
             if new_close_date_input.lower() == 'back': continue
             new_close_date = new_close_date_input or None # Set to None if empty after stripping
 
@@ -623,7 +624,8 @@ def handle_opportunities_menu():
             if new_description is not None:
                 update_params['description'] = new_description
             # Only update amount if the user provided a non-empty input string (handled by get_float_input returning float or None)
-            if new_amount is not None or (new_amount_str and new_amount_str.strip() == ''): # Check if input was provided or explicitly cleared
+            # Check if new_amount is not None (user entered a number) OR if the original input string was empty (user cleared it)
+            if new_amount is not None or (new_amount_input is not None and str(new_amount_input).strip() == ''):
                  update_params['amount'] = new_amount
             if new_close_date is not None:
                 update_params['close_date'] = new_close_date
