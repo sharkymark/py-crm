@@ -36,19 +36,19 @@ A Python command-line application for managing Accounts, Contacts, and Opportuni
 
 ## Usage
 
-Run the application and follow the on-screen menus:
+Run the application as a module using the `-m` flag:
 
 ```bash
-python main.py
+python3 -m src.main
 ```
 
 The application will present a main menu, and you can navigate through sub-menus for Accounts, Contacts, and Opportunities to perform CRUD operations.
 
 ## Database
 
-The application uses a SQLite3 database file named `crm.db` in the project root directory for data storage.
+The application uses a SQLite3 database file named `crm.db` located in the `data/` directory within the project root.
 
-You can use database tools like [DBeaver](https://dbeaver.io/) or the `sqlite3` command-line tool to inspect or manage the `crm.db` file directly if needed.
+You can use database tools like [DBeaver](https://dbeaver.io/) or the `sqlite3` command-line tool to inspect or manage the `data/crm.db` file directly if needed.
 
 ## Environment Variables
 

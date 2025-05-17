@@ -28,5 +28,5 @@
     },
     "remoteUser": "vscode",
     "postCreateCommand": "echo \"${GITHUB_PERSONAL_ACCESS_TOKEN}\" | gh auth login --with-token && echo 'Authentication successful' && git config --global --add safe.directory \"$(git rev-parse --show-toplevel)\" ",
-    "postStartCommand": "echo 'Starting container...' && echo 'Container started!' && python3 src/main.py"
+    "postStartCommand": "echo 'Starting container...' && echo 'Container started!' && python3 -m src.main"
 }
