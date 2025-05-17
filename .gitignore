@@ -6,7 +6,7 @@ __pycache__/
 *.pyd
 
 # Database file
-crm.db
+data/crm.db
 
 # Editor/IDE specific files
 .vscode/

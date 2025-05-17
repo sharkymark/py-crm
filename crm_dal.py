@@ -1,7 +1,8 @@
 # This file will contain the Data Access Layer (DAL) functions for performing CRUD operations on the CRM data (Accounts, Contacts, Opportunities).
 
 import sqlite3
-from database import get_db_connection
+# Update import to use relative path
+from .database import get_db_connection
 
 # --- Account Operations ---
 def create_account(name, industry):

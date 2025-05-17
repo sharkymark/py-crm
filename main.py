@@ -1,6 +1,7 @@
 import sys
-from database import create_tables
-from crm_dal import (
+# Update imports to use relative paths within the src directory
+from .database import create_tables
+from .crm_dal import (
     create_account, get_account, list_accounts, update_account, delete_account, search_accounts,
     create_contact, get_contact, list_contacts, update_contact, delete_contact, search_contacts,
     create_opportunity, get_opportunity, list_opportunities, update_opportunity, delete_opportunity, search_opportunities,

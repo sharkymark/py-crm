@@ -1,6 +1,9 @@
 import sqlite3
+import os # Import os module
 
-DATABASE_NAME = 'crm.db'
+# Define the path to the data directory and the database file
+DATA_DIR = 'data'
+DATABASE_NAME = os.path.join(DATA_DIR, 'crm.db') # Use os.path.join for cross-platform compatibility
 
 def get_db_connection():
     """
@@ -8,6 +11,8 @@ def get_db_connection():
     """
     conn = None
     try:
+        # Ensure the data directory exists
+        os.makedirs(DATA_DIR, exist_ok=True)
         conn = sqlite3.connect(DATABASE_NAME)
         conn.row_factory = sqlite3.Row  # Access columns by name
         return conn
