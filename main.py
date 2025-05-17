@@ -53,9 +53,24 @@ def get_integer_input(prompt):
     while True:
         try:
             value = input(prompt)
+            if value.lower() == 'back': # Allow 'back' to exit input loop
+                return 'back'
             return int(value)
         except ValueError:
-            print("Invalid input. Please enter an integer.")
+            print("Invalid input. Please enter an integer or 'back'.")
+
+def get_float_input(prompt):
+    """Gets float input from the user with validation."""
+    while True:
+        try:
+            value = input(prompt)
+            if value.lower() == 'back': # Allow 'back' to exit input loop
+                return 'back'
+            if not value: # Allow empty input for optional fields
+                return None
+            return float(value)
+        except ValueError:
+            print("Invalid input. Please enter a number or 'back'.")
 
 def handle_accounts_menu():
     """Handles the accounts management menu loop."""
@@ -86,7 +101,10 @@ def handle_accounts_menu():
                 print("No accounts found.")
 
         elif choice == '3': # Get Account by ID
-            account_id = get_integer_input("Enter account ID to get: ")
+            account_id_input = get_integer_input("Enter account ID to get: ")
+            if account_id_input == 'back': continue
+            account_id = account_id_input
+
             account = get_account(account_id)
             if account:
                 print("\n--- Account Details ---")
@@ -99,7 +117,10 @@ def handle_accounts_menu():
                 print(f"Account with ID {account_id} not found.")
 
         elif choice == '4': # Update Account by ID
-            account_id = get_integer_input("Enter account ID to update: ")
+            account_id_input = get_integer_input("Enter account ID to update: ")
+            if account_id_input == 'back': continue
+            account_id = account_id_input
+
             account = get_account(account_id)
             if not account:
                 print(f"Account with ID {account_id} not found.")
@@ -126,7 +147,10 @@ def handle_accounts_menu():
                 print(f"Failed to update account with ID {account_id}.") # DAL prints specific error
 
         elif choice == '5': # Delete Account by ID
-            account_id = get_integer_input("Enter account ID to delete: ")
+            account_id_input = get_integer_input("Enter account ID to delete: ")
+            if account_id_input == 'back': continue
+            account_id = account_id_input
+
             success = delete_account(account_id)
             if success:
                 print(f"Account with ID {account_id} deleted successfully.")
@@ -150,8 +174,10 @@ def handle_contacts_menu():
             last_name = input("Enter contact last name (required): ").strip()
             email = input("Enter contact email (required, must be unique): ").strip()
             phone = input("Enter contact phone (optional): ").strip() or None
-            account_id = get_integer_input("Enter associated account ID (optional, 0 for none): ")
-            account_id = account_id if account_id > 0 else None # Allow 0 or blank for no account
+
+            account_id_input = get_integer_input("Enter associated account ID (optional, 0 for none): ")
+            if account_id_input == 'back': continue
+            account_id = account_id_input if account_id_input > 0 else None # Allow 0 for none
 
             if not first_name or not last_name or not email:
                  print("First name, last name, and email are required.")
@@ -174,7 +200,10 @@ def handle_contacts_menu():
                 print("No contacts found.")
 
         elif choice == '3': # Get Contact by ID
-            contact_id = get_integer_input("Enter contact ID to get: ")
+            contact_id_input = get_integer_input("Enter contact ID to get: ")
+            if contact_id_input == 'back': continue
+            contact_id = contact_id_input
+
             contact = get_contact(contact_id)
             if contact:
                 print("\n--- Contact Details ---")
@@ -189,7 +218,10 @@ def handle_contacts_menu():
                 print(f"Contact with ID {contact_id} not found.")
 
         elif choice == '4': # Update Contact by ID
-            contact_id = get_integer_input("Enter contact ID to update: ")
+            contact_id_input = get_integer_input("Enter contact ID to update: ")
+            if contact_id_input == 'back': continue
+            contact_id = contact_id_input
+
             contact = get_contact(contact_id)
             if not contact:
                 print(f"Contact with ID {contact_id} not found.")
@@ -200,7 +232,9 @@ def handle_contacts_menu():
             new_last_name = input(f"Enter new last name (leave blank to keep '{contact['last_name']}'): ").strip() or None
             new_email = input(f"Enter new email (leave blank to keep '{contact['email']}'): ").strip() or None
             new_phone = input(f"Enter new phone (leave blank to keep '{contact['phone']}'): ").strip() or None
-            new_account_id_str = input(f"Enter new account ID (leave blank to keep '{contact['account_id'] or 'None'}', enter 0 for none): ").strip()
+
+            # Fix the f-string syntax here
+            new_account_id_str = input("Enter new account ID (leave blank to keep '{}', enter 0 for none): ".format(contact['account_id'] or 'None')).strip()
 
             new_account_id = None
             if new_account_id_str == '0':
@@ -224,6 +258,7 @@ def handle_contacts_menu():
             if new_phone is not None:
                 update_params['phone'] = new_phone
             # Only update account_id if the user provided a valid input (either a number or 0)
+            # Check if the input string was not empty, or if it was '0'
             if new_account_id_str or new_account_id_str == '0':
                  update_params['account_id'] = new_account_id
 
@@ -239,7 +274,10 @@ def handle_contacts_menu():
                 print(f"Failed to update contact with ID {contact_id}. Ensure email is unique and account ID is valid.") # DAL prints specific error
 
         elif choice == '5': # Delete Contact by ID
-            contact_id = get_integer_input("Enter contact ID to delete: ")
+            contact_id_input = get_integer_input("Enter contact ID to delete: ")
+            if contact_id_input == 'back': continue
+            contact_id = contact_id_input
+
             success = delete_contact(contact_id)
             if success:
                 print(f"Contact with ID {contact_id} deleted successfully.")
@@ -261,12 +299,21 @@ def handle_opportunities_menu():
         if choice == '1': # Create Opportunity
             name = input("Enter opportunity name (required): ").strip()
             description = input("Enter description (optional): ").strip() or None
-            amount_str = input("Enter amount (optional, leave blank for none): ").strip()
-            amount = float(amount_str) if amount_str else None
+
+            amount_input = get_float_input("Enter amount (optional, leave blank for none): ")
+            if amount_input == 'back': continue
+            amount = amount_input
+
             close_date = input("Enter expected close date (YYYY-MM-DD, optional): ").strip() or None # TODO: Add date validation
-            account_id = get_integer_input("Enter associated account ID (required): ")
-            contact_id = get_integer_input("Enter associated contact ID (optional, 0 for none): ")
-            contact_id = contact_id if contact_id > 0 else None # Allow 0 or blank for no contact
+
+            account_id_input = get_integer_input("Enter associated account ID (required): ")
+            if account_id_input == 'back': continue
+            account_id = account_id_input
+
+            contact_id_input = get_integer_input("Enter associated contact ID (optional, 0 for none): ")
+            if contact_id_input == 'back': continue
+            contact_id = contact_id_input if contact_id_input > 0 else None # Allow 0 for none
+
 
             if not name or not account_id:
                 print("Name and Account ID are required.")
@@ -289,7 +336,10 @@ def handle_opportunities_menu():
                 print("No opportunities found.")
 
         elif choice == '3': # Get Opportunity by ID
-            opportunity_id = get_integer_input("Enter opportunity ID to get: ")
+            opportunity_id_input = get_integer_input("Enter opportunity ID to get: ")
+            if opportunity_id_input == 'back': continue
+            opportunity_id = opportunity_id_input
+
             opportunity = get_opportunity(opportunity_id)
             if opportunity:
                 print("\n--- Opportunity Details ---")
@@ -306,7 +356,10 @@ def handle_opportunities_menu():
                 print(f"Opportunity with ID {opportunity_id} not found.")
 
         elif choice == '4': # Update Opportunity by ID
-            opportunity_id = get_integer_input("Enter opportunity ID to update: ")
+            opportunity_id_input = get_integer_input("Enter opportunity ID to update: ")
+            if opportunity_id_input == 'back': continue
+            opportunity_id = opportunity_id_input
+
             opportunity = get_opportunity(opportunity_id)
             if not opportunity:
                 print(f"Opportunity with ID {opportunity_id} not found.")
@@ -316,10 +369,18 @@ def handle_opportunities_menu():
 
             new_name = input(f"Enter new name (leave blank to keep '{opportunity['name']}'): ").strip() or None
             new_description = input(f"Enter new description (leave blank to keep '{opportunity['description']}'): ").strip() or None
-            new_amount_str = input(f"Enter new amount (leave blank to keep '{opportunity['amount'] or 'None'}'): ").strip()
+
+            # Fix the f-string syntax here
+            new_amount_str = input("Enter new amount (leave blank to keep '{}'): ".format(opportunity['amount'] or 'None')).strip()
+
             new_close_date = input(f"Enter new close date (YYYY-MM-DD, leave blank to keep '{opportunity['close_date'] or 'None'}'): ").strip() or None # TODO: Add date validation
-            new_account_id_str = input(f"Enter new account ID (leave blank to keep '{opportunity['account_id'] or 'None'}'): ").strip()
-            new_contact_id_str = input(f"Enter new contact ID (leave blank to keep '{opportunity['contact_id'] or 'None']}', enter 0 for none): ").strip()
+
+            # Fix the f-string syntax here
+            new_account_id_str = input("Enter new account ID (leave blank to keep '{}'): ".format(opportunity['account_id'] or 'None')).strip()
+
+            # Fix the f-string syntax here
+            new_contact_id_str = input("Enter new contact ID (leave blank to keep '{}', enter 0 for none): ".format(opportunity['contact_id'] or 'None')).strip()
+
 
             new_amount = None
             if new_amount_str:
@@ -359,15 +420,15 @@ def handle_opportunities_menu():
                 update_params['name'] = new_name
             if new_description is not None:
                 update_params['description'] = new_description
-            # Only update amount if the user provided a valid input
+            # Only update amount if the user provided a non-empty input string
             if new_amount_str:
                  update_params['amount'] = new_amount
             if new_close_date is not None:
                 update_params['close_date'] = new_close_date
-            # Only update account_id if the user provided a valid input
+            # Only update account_id if the user provided a non-empty input string
             if new_account_id_str:
                  update_params['account_id'] = new_account_id
-            # Only update contact_id if the user provided a valid input (number or 0)
+            # Only update contact_id if the user provided a non-empty input string or '0'
             if new_contact_id_str or new_contact_id_str == '0':
                  update_params['contact_id'] = new_contact_id
 
@@ -384,7 +445,10 @@ def handle_opportunities_menu():
 
 
         elif choice == '5': # Delete Opportunity by ID
-            opportunity_id = get_integer_input("Enter opportunity ID to delete: ")
+            opportunity_id_input = get_integer_input("Enter opportunity ID to delete: ")
+            if opportunity_id_input == 'back': continue
+            opportunity_id = opportunity_id_input
+
             success = delete_opportunity(opportunity_id)
             if success:
                 print(f"Opportunity with ID {opportunity_id} deleted successfully.")
