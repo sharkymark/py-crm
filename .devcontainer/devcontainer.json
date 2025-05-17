@@ -8,12 +8,12 @@
         "source=${localEnv:HOME}/.gitignore_global,target=/home/vscode/.gitignore_global,type=bind,consistency=cached,ro",
         "source=${localEnv:HOME}/.aider.conf.yml,target=/home/vscode/.aider.conf.yml,type=bind,consistency=cached,ro",
         "source=${localEnv:HOME}/.config/goose/config.yaml,target=/home/vscode/.config/goose/config.yaml,type=bind,consistency=cached,ro"
-    ],    
+    ],
     "containerEnv": {
         "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
         "GOOGLE_API_KEY": "${localEnv:GOOGLE_API_KEY}",
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_PERSONAL_ACCESS_TOKEN}"
-    },  
+    },
     "customizations": {
         "vscode": {
             "extensions": [
