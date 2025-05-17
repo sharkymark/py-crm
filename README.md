@@ -5,7 +5,7 @@ A Python command-line application for managing Accounts, Contacts, and Opportuni
 ## Features
 
 - **CRUD Operations**: Create, Read, Update, and Delete functionality for Accounts, Contacts, and Opportunities.
-- **Data Storage**: Uses SQLite3 for persistent storage.
+- **Data Storage**: Uses SQLite3 for persistent storage in a local file.
 - **Menu-Driven Interface**: Interact with the application through simple menus.
 
 ## Requirements
@@ -43,6 +43,12 @@ python main.py
 ```
 
 The application will present a main menu, and you can navigate through sub-menus for Accounts, Contacts, and Opportunities to perform CRUD operations.
+
+## Database
+
+The application uses a SQLite3 database file named `crm.db` in the project root directory for data storage.
+
+You can use database tools like [DBeaver](https://dbeaver.io/) or the `sqlite3` command-line tool to inspect or manage the `crm.db` file directly if needed.
 
 ## Environment Variables
 
