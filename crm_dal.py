@@ -72,6 +72,28 @@ def list_accounts():
         if cursor: cursor.close()
         if conn: conn.close()
 
+def search_accounts(query):
+    """
+    Search for accounts by name (case-insensitive, partial match).
+    Returns a list of matching account rows.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return []
+
+    cursor = conn.cursor()
+    try:
+        # Use LIKE for partial, case-insensitive search
+        cursor.execute("SELECT * FROM Accounts WHERE name LIKE ?", ('%' + query + '%',))
+        accounts = cursor.fetchall()
+        return accounts
+    except sqlite3.Error as e:
+        print(f"Database error searching accounts: {e}")
+        return []
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
 
 def update_account(account_id, name=None, industry=None):
     """
@@ -200,6 +222,33 @@ def list_contacts():
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
+
+def search_contacts(query):
+    """
+    Search for contacts by first name, last name, or email (case-insensitive, partial match).
+    Returns a list of matching contact rows.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return []
+
+    cursor = conn.cursor()
+    try:
+        # Use LIKE for partial, case-insensitive search across multiple fields
+        search_term = '%' + query + '%'
+        cursor.execute("""
+            SELECT * FROM Contacts
+            WHERE first_name LIKE ? OR last_name LIKE ? OR email LIKE ?
+        """, (search_term, search_term, search_term))
+        contacts = cursor.fetchall()
+        return contacts
+    except sqlite3.Error as e:
+        print(f"Database error searching contacts: {e}")
+        return []
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
 
 def update_contact(contact_id, first_name=None, last_name=None, email=None, phone=None, account_id=None):
     """

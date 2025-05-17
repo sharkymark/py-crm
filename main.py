@@ -1,8 +1,8 @@
 import sys
 from database import create_tables
 from crm_dal import (
-    create_account, get_account, list_accounts, update_account, delete_account,
-    create_contact, get_contact, list_contacts, update_contact, delete_contact,
+    create_account, get_account, list_accounts, update_account, delete_account, search_accounts,
+    create_contact, get_contact, list_contacts, update_contact, delete_contact, search_contacts,
     create_opportunity, get_opportunity, list_opportunities, update_opportunity, delete_opportunity
 )
 
@@ -71,6 +71,113 @@ def get_float_input(prompt):
             return float(value)
         except ValueError:
             print("Invalid input. Please enter a number or 'back'.")
+
+def select_account_by_search(prompt="Enter Account Name or ID (or 'back'): "):
+    """
+    Prompts user to search for an account by name or enter an ID,
+    handles search results, and returns the selected account ID or None/back.
+    """
+    while True:
+        query = input(prompt).strip()
+        if query.lower() == 'back':
+            return 'back'
+        if not query:
+            print("Input cannot be empty.")
+            continue
+
+        try:
+            # Try interpreting input as an ID
+            account_id = int(query)
+            account = get_account(account_id)
+            if account:
+                print(f"Selected Account: ID: {account['account_id']}, Name: {account['name']}")
+                return account_id
+            else:
+                print(f"No account found with ID: {account_id}")
+                continue # Ask again
+        except ValueError:
+            # Input is not an integer, perform search
+            accounts = search_accounts(query)
+            if not accounts:
+                print(f"No accounts found matching '{query}'.")
+                continue # Ask again
+            elif len(accounts) == 1:
+                account = accounts[0]
+                print(f"Found 1 matching account: ID: {account['account_id']}, Name: {account['name']}")
+                confirm = input("Use this account? (yes/no or 'back'): ").strip().lower()
+                if confirm == 'yes' or confirm == 'y':
+                    return account['account_id']
+                elif confirm == 'back':
+                    return 'back'
+                else:
+                    continue # Ask again
+            else:
+                print(f"Found {len(accounts)} matching accounts:")
+                for acc in accounts:
+                    print(f"  ID: {acc['account_id']}, Name: {acc['name']}, Industry: {acc['industry']}")
+                select_id_input = get_integer_input("Enter the ID of the account to select (or 'back'): ")
+                if select_id_input == 'back':
+                    return 'back'
+                selected_account = get_account(select_id_input)
+                if selected_account:
+                    return selected_account['account_id']
+                else:
+                    print("Invalid ID selected.")
+                    continue # Ask again
+
+def select_contact_by_search(prompt="Enter Contact Name, Email, or ID (or 'back'): "):
+    """
+    Prompts user to search for a contact by name/email or enter an ID,
+    handles search results, and returns the selected contact ID or None/back.
+    """
+    while True:
+        query = input(prompt).strip()
+        if query.lower() == 'back':
+            return 'back'
+        if not query:
+            print("Input cannot be empty.")
+            continue
+
+        try:
+            # Try interpreting input as an ID
+            contact_id = int(query)
+            contact = get_contact(contact_id)
+            if contact:
+                print(f"Selected Contact: ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}")
+                return contact_id
+            else:
+                print(f"No contact found with ID: {contact_id}")
+                continue # Ask again
+        except ValueError:
+            # Input is not an integer, perform search
+            contacts = search_contacts(query)
+            if not contacts:
+                print(f"No contacts found matching '{query}'.")
+                continue # Ask again
+            elif len(contacts) == 1:
+                contact = contacts[0]
+                print(f"Found 1 matching contact: ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}")
+                confirm = input("Use this contact? (yes/no or 'back'): ").strip().lower()
+                if confirm == 'yes' or confirm == 'y':
+                    return contact['contact_id']
+                elif confirm == 'back':
+                    return 'back'
+                else:
+                    continue # Ask again
+            else:
+                print(f"Found {len(contacts)} matching contacts:")
+                for con in contacts:
+                    print(f"  ID: {con['contact_id']}, Name: {con['first_name']} {con['last_name']}, Email: {con['email']}")
+                select_id_input = get_integer_input("Enter the ID of the contact to select (or 'back'): ")
+                if select_id_input == 'back':
+                    return 'back'
+                selected_contact = get_contact(select_id_input)
+                if selected_contact:
+                    return selected_contact['contact_id']
+                else:
+                    print("Invalid ID selected.")
+                    continue # Ask again
+
 
 def handle_accounts_menu():
     """Handles the accounts management menu loop."""
@@ -175,13 +282,15 @@ def handle_contacts_menu():
             email = input("Enter contact email (required, must be unique): ").strip()
             phone = input("Enter contact phone (optional): ").strip() or None
 
-            account_id_input = get_integer_input("Enter associated account ID (optional, 0 for none): ")
-            if account_id_input == 'back': continue
-            account_id = account_id_input if account_id_input > 0 else None # Allow 0 for none
-
             if not first_name or not last_name or not email:
                  print("First name, last name, and email are required.")
                  continue
+
+            # Use the new select_account_by_search helper
+            print("\n--- Link Contact to Account ---")
+            account_id = select_account_by_search("Enter associated Account Name or ID (optional, leave blank for none, or 'back'): ")
+            if account_id == 'back': continue
+            # If user left blank, select_account_by_search returns None, which is correct for optional account_id
 
             contact_id = create_contact(first_name, last_name, email, phone, account_id)
             if contact_id:
@@ -233,20 +342,17 @@ def handle_contacts_menu():
             new_email = input(f"Enter new email (leave blank to keep '{contact['email']}'): ").strip() or None
             new_phone = input(f"Enter new phone (leave blank to keep '{contact['phone']}'): ").strip() or None
 
-            # Fix the f-string syntax here
-            new_account_id_str = input("Enter new account ID (leave blank to keep '{}', enter 0 for none): ".format(contact['account_id'] or 'None')).strip()
+            # Use the new select_account_by_search helper for updating account link
+            print("\n--- Update Account Link ---")
+            # Pass the current account ID to the prompt for clarity
+            current_account_display = contact['account_id'] if contact['account_id'] is not None else 'None'
+            new_account_id = select_account_by_search(f"Enter new associated Account Name or ID (leave blank to keep '{current_account_display}', enter 0 for none, or 'back'): ")
 
-            new_account_id = None
-            if new_account_id_str == '0':
-                 new_account_id = None # Explicitly set to None if user enters 0
-            elif new_account_id_str:
-                 try:
-                     new_account_id = int(new_account_id_str)
-                 except ValueError:
-                     print("Invalid account ID entered. Keeping old value.")
-                     new_account_id = contact['account_id'] # Revert to old value on invalid input
-            else:
-                 new_account_id = contact['account_id'] # Keep old value if blank
+            if new_account_id == 'back': continue # Go back if user entered 'back' during account selection
+
+            # Handle the case where user enters 0 for no account
+            if isinstance(new_account_id, int) and new_account_id == 0:
+                 new_account_id = None # Set to None if user explicitly entered 0
 
             update_params = {}
             if new_first_name is not None:
@@ -257,9 +363,18 @@ def handle_contacts_menu():
                 update_params['email'] = new_email
             if new_phone is not None:
                 update_params['phone'] = new_phone
-            # Only update account_id if the user provided a valid input (either a number or 0)
-            # Check if the input string was not empty, or if it was '0'
-            if new_account_id_str or new_account_id_str == '0':
+
+            # Only update account_id if the user provided input (either a search result or 0)
+            # Check if new_account_id is not the special 'back' string
+            if new_account_id != 'back':
+                 # We need to explicitly include account_id in update_params
+                 # even if it's None (from user entering 0 or leaving blank search)
+                 # to allow unlinking the contact from an account.
+                 # If the user left the search blank and no account was found,
+                 # select_account_by_search returns None, which is correct.
+                 # If the user selected an account, it returns the ID.
+                 # If the user entered 0, we set it to None.
+                 # If the user entered an invalid search/ID, select_account_by_search loops until valid or 'back'.
                  update_params['account_id'] = new_account_id
 
 
@@ -306,18 +421,24 @@ def handle_opportunities_menu():
 
             close_date = input("Enter expected close date (YYYY-MM-DD, optional): ").strip() or None # TODO: Add date validation
 
-            account_id_input = get_integer_input("Enter associated account ID (required): ")
-            if account_id_input == 'back': continue
-            account_id = account_id_input
-
-            contact_id_input = get_integer_input("Enter associated contact ID (optional, 0 for none): ")
-            if contact_id_input == 'back': continue
-            contact_id = contact_id_input if contact_id_input > 0 else None # Allow 0 for none
-
-
-            if not name or not account_id:
-                print("Name and Account ID are required.")
+            if not name:
+                print("Name is required.")
                 continue
+
+            # Use the new select_account_by_search helper for required account
+            print("\n--- Link Opportunity to Account ---")
+            account_id = select_account_by_search("Enter associated Account Name or ID (required, or 'back'): ")
+            if account_id == 'back': continue
+            if account_id is None: # select_account_by_search returns None if search yields no results
+                 print("Account selection failed. Account is required.")
+                 continue # Stay in opportunity menu
+
+            # Use the new select_contact_by_search helper for optional contact
+            print("\n--- Link Opportunity to Contact ---")
+            contact_id = select_contact_by_search("Enter associated Contact Name, Email, or ID (optional, leave blank for none, or 'back'): ")
+            if contact_id == 'back': continue
+            # If user left blank, select_contact_by_search returns None, which is correct for optional contact_id
+
 
             opportunity_id = create_opportunity(name, description, amount, close_date, account_id, contact_id)
             if opportunity_id:
@@ -370,18 +491,7 @@ def handle_opportunities_menu():
             new_name = input(f"Enter new name (leave blank to keep '{opportunity['name']}'): ").strip() or None
             new_description = input(f"Enter new description (leave blank to keep '{opportunity['description']}'): ").strip() or None
 
-            # Fix the f-string syntax here
             new_amount_str = input("Enter new amount (leave blank to keep '{}'): ".format(opportunity['amount'] or 'None')).strip()
-
-            new_close_date = input(f"Enter new close date (YYYY-MM-DD, leave blank to keep '{opportunity['close_date'] or 'None'}'): ").strip() or None # TODO: Add date validation
-
-            # Fix the f-string syntax here
-            new_account_id_str = input("Enter new account ID (leave blank to keep '{}'): ".format(opportunity['account_id'] or 'None')).strip()
-
-            # Fix the f-string syntax here
-            new_contact_id_str = input("Enter new contact ID (leave blank to keep '{}', enter 0 for none): ".format(opportunity['contact_id'] or 'None')).strip()
-
-
             new_amount = None
             if new_amount_str:
                 try:
@@ -392,27 +502,28 @@ def handle_opportunities_menu():
             else:
                 new_amount = opportunity['amount'] # Keep old value if blank
 
-            new_account_id = None
-            if new_account_id_str:
-                 try:
-                     new_account_id = int(new_account_id_str)
-                 except ValueError:
-                     print("Invalid account ID entered. Keeping old value.")
-                     new_account_id = opportunity['account_id'] # Revert to old value on invalid input
-            else:
-                 new_account_id = opportunity['account_id'] # Keep old value if blank
 
-            new_contact_id = None
-            if new_contact_id_str == '0':
-                 new_contact_id = None # Explicitly set to None if user enters 0
-            elif new_contact_id_str:
-                 try:
-                     new_contact_id = int(new_contact_id_str)
-                 except ValueError:
-                     print("Invalid contact ID entered. Keeping old value.")
-                     new_contact_id = opportunity['contact_id'] # Revert to old value on invalid input
-            else:
-                 new_contact_id = opportunity['contact_id'] # Keep old value if blank
+            new_close_date = input(f"Enter new close date (YYYY-MM-DD, leave blank to keep '{opportunity['close_date'] or 'None'}'): ").strip() or None # TODO: Add date validation
+
+            # Use the new select_account_by_search helper for updating account link
+            print("\n--- Update Account Link ---")
+            current_account_display = opportunity['account_id'] if opportunity['account_id'] is not None else 'None'
+            new_account_id = select_account_by_search(f"Enter new associated Account Name or ID (leave blank to keep '{current_account_display}', or 'back'): ")
+
+            if new_account_id == 'back': continue # Go back if user entered 'back' during account selection
+            # If user left blank, select_account_by_search returns None, which means keep the old value.
+            # If user selected an account, it returns the ID.
+
+            # Use the new select_contact_by_search helper for updating contact link
+            print("\n--- Update Contact Link ---")
+            current_contact_display = opportunity['contact_id'] if opportunity['contact_id'] is not None else 'None'
+            new_contact_id = select_contact_by_search(f"Enter new associated Contact Name, Email, or ID (leave blank to keep '{current_contact_display}', enter 0 for none, or 'back'): ")
+
+            if new_contact_id == 'back': continue # Go back if user entered 'back' during contact selection
+
+            # Handle the case where user enters 0 for no contact
+            if isinstance(new_contact_id, int) and new_contact_id == 0:
+                 new_contact_id = None # Set to None if user explicitly entered 0
 
 
             update_params = {}
@@ -425,12 +536,33 @@ def handle_opportunities_menu():
                  update_params['amount'] = new_amount
             if new_close_date is not None:
                 update_params['close_date'] = new_close_date
-            # Only update account_id if the user provided a non-empty input string
-            if new_account_id_str:
-                 update_params['account_id'] = new_account_id
-            # Only update contact_id if the user provided a non-empty input string or '0'
-            if new_contact_id_str or new_contact_id_str == '0':
-                 update_params['contact_id'] = new_contact_id
+
+            # Only update account_id if the user provided input (either a search result)
+            # Check if new_account_id is not the special 'back' string
+            if new_account_id != 'back':
+                 # If user left blank, select_account_by_search returns None.
+                 # If user selected an account, it returns the ID.
+                 # We need to explicitly include account_id in update_params
+                 # if the user provided any input during the selection process.
+                 # A simple check if new_account_id is not None (meaning they selected something or left blank)
+                 # is sufficient, as select_account_by_search handles the 'back' case.
+                 if new_account_id is not None: # This covers both selecting an ID and leaving blank (resulting in None)
+                     update_params['account_id'] = new_account_id
+                 # If new_account_id is None AND the user didn't provide input (left blank),
+                 # select_account_by_search returns None, and we don't add it to update_params,
+                 # effectively keeping the old value. This seems correct for updates.
+                 # If the user explicitly entered 0 or selected an account, it's handled above.
+
+
+            # Only update contact_id if the user provided input (either a search result or 0)
+            # Check if new_contact_id is not the special 'back' string
+            if new_contact_id != 'back':
+                 # Similar logic to account_id update
+                 if new_contact_id is not None: # This covers selecting an ID, leaving blank (resulting in None), or entering 0 (resulting in None)
+                     update_params['contact_id'] = new_contact_id
+                 # If new_contact_id is None AND the user didn't provide input (left blank),
+                 # select_contact_by_search returns None, and we don't add it to update_params,
+                 # effectively keeping the old value. This seems correct for updates.
 
 
             if not update_params:
