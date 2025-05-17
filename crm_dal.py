@@ -84,7 +84,8 @@ def search_accounts(query):
     cursor = conn.cursor()
     try:
         # Use LIKE for partial, case-insensitive search
-        cursor.execute("SELECT * FROM Accounts WHERE name LIKE ?", ('%' + query + '%',))
+        search_term = '%' + query + '%'
+        cursor.execute("SELECT * FROM Accounts WHERE name LIKE ?", (search_term,))
         accounts = cursor.fetchall()
         return accounts
     except sqlite3.Error as e:
@@ -384,6 +385,32 @@ def list_opportunities():
         return opportunities
     except sqlite3.Error as e:
         print(f"Database error listing opportunities: {e}")
+        return []
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+def search_opportunities(query):
+    """
+    Search for opportunities by name or description (case-insensitive, partial match).
+    Returns a list of matching opportunity rows.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return []
+
+    cursor = conn.cursor()
+    try:
+        # Use LIKE for partial, case-insensitive search across multiple fields
+        search_term = '%' + query + '%'
+        cursor.execute("""
+            SELECT * FROM Opportunities
+            WHERE name LIKE ? OR description LIKE ?
+        """, (search_term, search_term))
+        opportunities = cursor.fetchall()
+        return opportunities
+    except sqlite3.Error as e:
+        print(f"Database error searching opportunities: {e}")
         return []
     finally:
         if cursor: cursor.close()
