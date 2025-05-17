@@ -250,6 +250,27 @@ def search_contacts(query):
         if cursor: cursor.close()
         if conn: conn.close()
 
+def get_contacts_by_account(account_id):
+    """
+    Retrieve all contacts linked to a specific account.
+    Returns a list of contact rows.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return []
+
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM Contacts WHERE account_id = ?", (account_id,))
+        contacts = cursor.fetchall()
+        return contacts
+    except sqlite3.Error as e:
+        print(f"Database error getting contacts by account: {e}")
+        return []
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
 
 def update_contact(contact_id, first_name=None, last_name=None, email=None, phone=None, account_id=None):
     """
@@ -411,6 +432,27 @@ def search_opportunities(query):
         return opportunities
     except sqlite3.Error as e:
         print(f"Database error searching opportunities: {e}")
+        return []
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+def get_opportunities_by_account(account_id):
+    """
+    Retrieve all opportunities linked to a specific account.
+    Returns a list of opportunity rows.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return []
+
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM Opportunities WHERE account_id = ?", (account_id,))
+        opportunities = cursor.fetchall()
+        return opportunities
+    except sqlite3.Error as e:
+        print(f"Database error getting opportunities by account: {e}")
         return []
     finally:
         if cursor: cursor.close()

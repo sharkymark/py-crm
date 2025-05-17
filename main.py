@@ -3,7 +3,8 @@ from database import create_tables
 from crm_dal import (
     create_account, get_account, list_accounts, update_account, delete_account, search_accounts,
     create_contact, get_contact, list_contacts, update_contact, delete_contact, search_contacts,
-    create_opportunity, get_opportunity, list_opportunities, update_opportunity, delete_opportunity, search_opportunities
+    create_opportunity, get_opportunity, list_opportunities, update_opportunity, delete_opportunity, search_opportunities,
+    get_contacts_by_account, get_opportunities_by_account # Import new DAL functions
 )
 
 def display_main_menu():
@@ -12,7 +13,8 @@ def display_main_menu():
     print("1. Manage Accounts")
     print("2. Manage Contacts")
     print("3. Manage Opportunities")
-    print("4. Exit")
+    print("4. Summary") # Added Summary Option
+    print("5. Exit") # Renumbered Exit
     print("----------------------------")
 
 def display_accounts_menu():
@@ -236,6 +238,89 @@ def select_opportunity_by_search(prompt="Enter Opportunity Name, Description, or
                 else:
                     print("Invalid ID selected.")
                     continue # Ask again
+
+
+# --- Summary Handler ---
+def handle_summary_menu():
+    """Handles the summary menu option."""
+    print("\n--- CRM Summary ---")
+    search_term = input("Enter search term for Accounts, Contacts, or Opportunities (or 'back'): ").strip()
+    if search_term.lower() == 'back':
+        return
+    if not search_term:
+        print("Search term cannot be empty.")
+        return
+
+    matching_accounts = search_accounts(search_term)
+    matching_contacts = search_contacts(search_term)
+    matching_opportunities = search_opportunities(search_term)
+
+    displayed_contact_ids = set()
+    displayed_opportunity_ids = set()
+
+    print("\n--- Accounts ---")
+    if matching_accounts:
+        for account in matching_accounts:
+            print(f"Account ID: {account['account_id']}, Name: {account['name']}, Industry: {account['industry']}")
+
+            # Display Contacts linked to this Account
+            contacts_for_account = get_contacts_by_account(account['account_id'])
+            if contacts_for_account:
+                print("  Contacts:")
+                for contact in contacts_for_account:
+                    print(f"    ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}")
+                    displayed_contact_ids.add(contact['contact_id'])
+
+            # Display Opportunities linked to this Account
+            opportunities_for_account = get_opportunities_by_account(account['account_id'])
+            if opportunities_for_account:
+                print("  Opportunities:")
+                for opp in opportunities_for_account:
+                    print(f"    ID: {opp['opportunity_id']}, Name: {opp['name']}, Amount: {opp['amount']}, Close Date: {opp['close_date']}")
+                    displayed_opportunity_ids.add(opp['opportunity_id'])
+
+                    # Display Contact linked to this Opportunity (if any)
+                    if opp['contact_id']:
+                        contact_for_opp = get_contact(opp['contact_id'])
+                        if contact_for_opp:
+                            print(f"      Contact: ID: {contact_for_opp['contact_id']}, Name: {contact_for_opp['first_name']} {contact_for_opp['last_name']}")
+                            displayed_contact_ids.add(contact_for_opp['contact_id'])
+    else:
+        print("No matching accounts found.")
+
+    print("\n--- Standalone Contacts ---")
+    standalone_contacts_found = False
+    if matching_contacts:
+        for contact in matching_contacts:
+            if contact['contact_id'] not in displayed_contact_ids:
+                print(f"Contact ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}, Account ID: {contact['account_id']}")
+                standalone_contacts_found = True
+                displayed_contact_ids.add(contact['contact_id']) # Add just in case
+
+    if not standalone_contacts_found:
+         print("No standalone matching contacts found.")
+
+
+    print("\n--- Standalone Opportunities ---")
+    standalone_opportunities_found = False
+    if matching_opportunities:
+        for opp in matching_opportunities:
+            if opp['opportunity_id'] not in displayed_opportunity_ids:
+                print(f"Opportunity ID: {opp['opportunity_id']}, Name: {opp['name']}, Amount: {opp['amount']}, Close Date: {opp['close_date']}, Account ID: {opp['account_id']}")
+                standalone_opportunities_found = True
+                displayed_opportunity_ids.add(opp['opportunity_id']) # Add just in case
+
+                # Display Contact linked to this Standalone Opportunity (if any)
+                if opp['contact_id']:
+                    contact_for_opp = get_contact(opp['contact_id'])
+                    if contact_for_opp:
+                        print(f"  Contact: ID: {contact_for_opp['contact_id']}, Name: {contact_for_opp['first_name']} {contact_for_opp['last_name']}")
+                        displayed_contact_ids.add(contact_for_opp['contact_id']) # Add just in case
+
+    if not standalone_opportunities_found:
+        print("No standalone matching opportunities found.")
+
+    print("\n--- End Summary ---")
 
 
 # --- Menu Handlers ---
@@ -724,7 +809,9 @@ def main():
             handle_contacts_menu()
         elif choice == '3':
             handle_opportunities_menu()
-        elif choice == '4':
+        elif choice == '4': # Handle Summary
+            handle_summary_menu()
+        elif choice == '5': # Handle Exit
             print("Exiting application. Goodbye!")
             sys.exit(0)
         else:
