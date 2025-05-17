@@ -267,16 +267,21 @@ def handle_summary_menu():
     """Handles the summary menu option."""
     print("\n--- CRM Summary ---")
     try:
-        search_term = input("Enter search term for Accounts, Contacts, or Opportunities (or 'back'): ").strip()
+        # Updated prompt to inform user about empty input
+        search_term = input("Enter search term for Accounts, Contacts, or Opportunities (leave blank for all, or 'back'): ").strip()
         if search_term.lower() == 'back':
             return
-        if not search_term:
-            print("Search term cannot be empty.")
-            return
 
-        matching_accounts = search_accounts(search_term)
-        matching_contacts = search_contacts(search_term)
-        matching_opportunities = search_opportunities(search_term)
+        # If search term is empty, list all; otherwise, search
+        if not search_term:
+            print("Displaying all records...")
+            matching_accounts = list_accounts()
+            matching_contacts = list_contacts()
+            matching_opportunities = list_opportunities()
+        else:
+            matching_accounts = search_accounts(search_term)
+            matching_contacts = search_contacts(search_term)
+            matching_opportunities = search_opportunities(search_term)
 
         displayed_contact_ids = set()
         displayed_opportunity_ids = set()
@@ -309,7 +314,7 @@ def handle_summary_menu():
                                 print(f"      Contact: ID: {contact_for_opp['contact_id']}, Name: {contact_for_opp['first_name']} {contact_for_opp['last_name']}")
                                 displayed_contact_ids.add(contact_for_opp['contact_id'])
         else:
-            print("No matching accounts found.")
+            print("No matching accounts found." if search_term else "No accounts found.")
 
         print("\n--- Standalone Contacts ---")
         standalone_contacts_found = False
@@ -321,7 +326,7 @@ def handle_summary_menu():
                     displayed_contact_ids.add(contact['contact_id']) # Add just in case
 
         if not standalone_contacts_found:
-             print("No standalone matching contacts found.")
+             print("No standalone matching contacts found." if search_term else "No standalone contacts found.")
 
 
         print("\n--- Standalone Opportunities ---")
@@ -341,7 +346,7 @@ def handle_summary_menu():
                             displayed_contact_ids.add(contact_for_opp['contact_id']) # Add just in case
 
         if not standalone_opportunities_found:
-            print("No standalone matching opportunities found.")
+            print("No standalone matching opportunities found." if search_term else "No standalone opportunities found.")
 
         print("\n--- End Summary ---")
 
