@@ -1,0 +1,32 @@
+{
+    "name": "My Python Dev Container",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "mounts": [
+        "source=${localEnv:HOME}/.gitignore_global,target=/home/vscode/.gitignore_global,type=bind,consistency=cached,ro",
+        "source=${localEnv:HOME}/.aider.conf.yml,target=/home/vscode/.aider.conf.yml,type=bind,consistency=cached,ro",
+        "source=${localEnv:HOME}/.config/goose/config.yaml,target=/home/vscode/.config/goose/config.yaml,type=bind,consistency=cached,ro"
+    ],    
+    "containerEnv": {
+        "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
+        "GOOGLE_API_KEY": "${localEnv:GOOGLE_API_KEY}",
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_PERSONAL_ACCESS_TOKEN}"
+    },  
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "github.copilot"
+            ]
+        },
+        "settings": { 
+          "terminal.integrated.shell.linux": "/bin/bash"
+        }        
+    },
+    "remoteUser": "vscode",
+    "postCreateCommand": "echo \"${GITHUB_PERSONAL_ACCESS_TOKEN}\" | gh auth login --with-token && echo 'Authentication successful' && git config --global --add safe.directory \"$(git rev-parse --show-toplevel)\" ",
+    "postStartCommand": "echo 'Starting container...' && echo 'Container started!' && python3 main.py --name $(whoami)"
+} 
