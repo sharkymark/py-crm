@@ -1,4 +1,3 @@
-import argparse
 import sys
 from database import create_tables
 from crm_dal import (
@@ -7,329 +6,423 @@ from crm_dal import (
     create_opportunity, get_opportunity, list_opportunities, update_opportunity, delete_opportunity
 )
 
-# --- Command Wrapper Functions ---
+def display_main_menu():
+    """Displays the main menu options."""
+    print("\n--- Simple CRM Main Menu ---")
+    print("1. Manage Accounts")
+    print("2. Manage Contacts")
+    print("3. Manage Opportunities")
+    print("4. Exit")
+    print("----------------------------")
 
-# Account Commands
-def create_account_command(args):
-    account_id = create_account(args.name, args.industry)
-    if account_id:
-        print(f"Account '{args.name}' created successfully with ID: {account_id}")
-    else:
-        print(f"Failed to create account '{args.name}'.")
+def display_accounts_menu():
+    """Displays the accounts management menu."""
+    print("\n--- Manage Accounts ---")
+    print("1. Create Account")
+    print("2. List Accounts")
+    print("3. Get Account by ID")
+    print("4. Update Account by ID")
+    print("5. Delete Account by ID")
+    print("6. Back to Main Menu")
+    print("-----------------------")
 
-def list_accounts_command(args):
-    accounts = list_accounts()
-    if accounts:
-        print("\n--- Accounts ---")
-        for account in accounts:
-            print(f"ID: {account['account_id']}, Name: {account['name']}, Industry: {account['industry']}, Created: {account['created_at']}")
-        print("----------------")
-    else:
-        print("No accounts found.")
+def display_contacts_menu():
+    """Displays the contacts management menu."""
+    print("\n--- Manage Contacts ---")
+    print("1. Create Contact")
+    print("2. List Contacts")
+    print("3. Get Contact by ID")
+    print("4. Update Contact by ID")
+    print("5. Delete Contact by ID")
+    print("6. Back to Main Menu")
+    print("-----------------------")
 
-def get_account_command(args):
-    account = get_account(args.account_id)
-    if account:
-        print("\n--- Account Details ---")
-        print(f"ID: {account['account_id']}")
-        print(f"Name: {account['name']}")
-        print(f"Industry: {account['industry']}")
-        print(f"Created: {account['created_at']}")
-        print("-----------------------")
-    else:
-        print(f"Account with ID {args.account_id} not found.")
+def display_opportunities_menu():
+    """Displays the opportunities management menu."""
+    print("\n--- Manage Opportunities ---")
+    print("1. Create Opportunity")
+    print("2. List Opportunities")
+    print("3. Get Opportunity by ID")
+    print("4. Update Opportunity by ID")
+    print("5. Delete Opportunity by ID")
+    print("6. Back to Main Menu")
+    print("--------------------------")
 
-def update_account_command(args):
-    # Only pass arguments if they were provided on the command line
-    update_params = {}
-    if args.name is not None:
-        update_params['name'] = args.name
-    if args.industry is not None:
-        update_params['industry'] = args.industry
+def get_integer_input(prompt):
+    """Gets integer input from the user with validation."""
+    while True:
+        try:
+            value = input(prompt)
+            return int(value)
+        except ValueError:
+            print("Invalid input. Please enter an integer.")
 
-    if not update_params:
-        print("No update parameters provided.")
-        return
+def handle_accounts_menu():
+    """Handles the accounts management menu loop."""
+    while True:
+        display_accounts_menu()
+        choice = input("Enter your choice: ").strip()
 
-    success = update_account(args.account_id, **update_params)
-    if success:
-        print(f"Account with ID {args.account_id} updated successfully.")
-    else:
-        print(f"Failed to update account with ID {args.account_id}. It might not exist or no changes were made.")
+        if choice == '1': # Create Account
+            name = input("Enter account name (required): ").strip()
+            if not name:
+                print("Account name is required.")
+                continue
+            industry = input("Enter account industry (optional): ").strip() or None
+            account_id = create_account(name, industry)
+            if account_id:
+                print(f"Account '{name}' created successfully with ID: {account_id}")
+            else:
+                print(f"Failed to create account '{name}'.")
 
-def delete_account_command(args):
-    success = delete_account(args.account_id)
-    if success:
-        print(f"Account with ID {args.account_id} deleted successfully.")
-    else:
-        print(f"Failed to delete account with ID {args.account_id}. It might not exist.")
+        elif choice == '2': # List Accounts
+            accounts = list_accounts()
+            if accounts:
+                print("\n--- Accounts ---")
+                for account in accounts:
+                    print(f"ID: {account['account_id']}, Name: {account['name']}, Industry: {account['industry']}, Created: {account['created_at']}")
+                print("----------------")
+            else:
+                print("No accounts found.")
 
-# Contact Commands
-def create_contact_command(args):
-    contact_id = create_contact(args.first_name, args.last_name, args.email, args.phone, args.account_id)
-    if contact_id:
-        print(f"Contact '{args.first_name} {args.last_name}' created successfully with ID: {contact_id}")
-    else:
-        print(f"Failed to create contact '{args.first_name} {args.last_name}'. Ensure the account ID is valid.")
+        elif choice == '3': # Get Account by ID
+            account_id = get_integer_input("Enter account ID to get: ")
+            account = get_account(account_id)
+            if account:
+                print("\n--- Account Details ---")
+                print(f"ID: {account['account_id']}")
+                print(f"Name: {account['name']}")
+                print(f"Industry: {account['industry']}")
+                print(f"Created: {account['created_at']}")
+                print("-----------------------")
+            else:
+                print(f"Account with ID {account_id} not found.")
 
-def list_contacts_command(args):
-    contacts = list_contacts()
-    if contacts:
-        print("\n--- Contacts ---")
-        for contact in contacts:
-            print(f"ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}, Phone: {contact['phone']}, Account ID: {contact['account_id']}, Created: {contact['created_at']}")
-        print("----------------")
-    else:
-        print("No contacts found.")
+        elif choice == '4': # Update Account by ID
+            account_id = get_integer_input("Enter account ID to update: ")
+            account = get_account(account_id)
+            if not account:
+                print(f"Account with ID {account_id} not found.")
+                continue
 
-def get_contact_command(args):
-    contact = get_contact(args.contact_id)
-    if contact:
-        print("\n--- Contact Details ---")
-        print(f"ID: {contact['contact_id']}")
-        print(f"Name: {contact['first_name']} {contact['last_name']}")
-        print(f"Email: {contact['email']}")
-        print(f"Phone: {contact['phone']}")
-        print(f"Account ID: {contact['account_id']}")
-        print(f"Created: {contact['created_at']}")
-        print("-----------------------")
-    else:
-        print(f"Contact with ID {args.contact_id} not found.")
+            print(f"Current Account Details: ID: {account['account_id']}, Name: {account['name']}, Industry: {account['industry']}")
+            new_name = input(f"Enter new name (leave blank to keep '{account['name']}'): ").strip() or None
+            new_industry = input(f"Enter new industry (leave blank to keep '{account['industry']}'): ").strip() or None
 
-def update_contact_command(args):
-    update_params = {}
-    if args.first_name is not None:
-        update_params['first_name'] = args.first_name
-    if args.last_name is not None:
-        update_params['last_name'] = args.last_name
-    if args.email is not None:
-        update_params['email'] = args.email
-    if args.phone is not None:
-        update_params['phone'] = args.phone
-    if args.account_id is not None:
-        update_params['account_id'] = args.account_id
+            update_params = {}
+            if new_name is not None:
+                update_params['name'] = new_name
+            if new_industry is not None:
+                update_params['industry'] = new_industry
 
-    if not update_params:
-        print("No update parameters provided.")
-        return
+            if not update_params:
+                print("No update parameters provided.")
+                continue
 
-    success = update_contact(args.contact_id, **update_params)
-    if success:
-        print(f"Contact with ID {args.contact_id} updated successfully.")
-    else:
-        print(f"Failed to update contact with ID {args.contact_id}. It might not exist or no changes were made.")
+            success = update_account(account_id, **update_params)
+            if success:
+                print(f"Account with ID {account_id} updated successfully.")
+            else:
+                print(f"Failed to update account with ID {account_id}.") # DAL prints specific error
 
-def delete_contact_command(args):
-    success = delete_contact(args.contact_id)
-    if success:
-        print(f"Contact with ID {args.contact_id} deleted successfully.")
-    else:
-        print(f"Failed to delete contact with ID {args.contact_id}. It might not exist.")
+        elif choice == '5': # Delete Account by ID
+            account_id = get_integer_input("Enter account ID to delete: ")
+            success = delete_account(account_id)
+            if success:
+                print(f"Account with ID {account_id} deleted successfully.")
+            else:
+                print(f"Failed to delete account with ID {account_id}. It might not exist.")
 
-# Opportunity Commands
-def create_opportunity_command(args):
-    opportunity_id = create_opportunity(args.name, args.description, args.amount, args.close_date, args.account_id, args.contact_id)
-    if opportunity_id:
-        print(f"Opportunity '{args.name}' created successfully with ID: {opportunity_id}")
-    else:
-        print(f"Failed to create opportunity '{args.name}'. Ensure account and contact IDs are valid.")
+        elif choice == '6': # Back
+            break
 
-def list_opportunities_command(args):
-    opportunities = list_opportunities()
-    if opportunities:
-        print("\n--- Opportunities ---")
-        for opp in opportunities:
-            print(f"ID: {opp['opportunity_id']}, Name: {opp['name']}, Amount: {opp['amount']}, Close Date: {opp['close_date']}, Account ID: {opp['account_id']}, Contact ID: {opp['contact_id']}, Created: {opp['created_at']}")
-        print("---------------------")
-    else:
-        print("No opportunities found.")
+        else:
+            print("Invalid choice. Please try again.")
 
-def get_opportunity_command(args):
-    opportunity = get_opportunity(args.opportunity_id)
-    if opportunity:
-        print("\n--- Opportunity Details ---")
-        print(f"ID: {opportunity['opportunity_id']}")
-        print(f"Name: {opportunity['name']}")
-        print(f"Description: {opportunity['description']}")
-        print(f"Amount: {opportunity['amount']}")
-        print(f"Close Date: {opportunity['close_date']}")
-        print(f"Account ID: {opportunity['account_id']}")
-        print(f"Contact ID: {opportunity['contact_id']}")
-        print(f"Created: {opportunity['created_at']}")
-        print("-------------------------")
-    else:
-        print(f"Opportunity with ID {args.opportunity_id} not found.")
+def handle_contacts_menu():
+    """Handles the contacts management menu loop."""
+    while True:
+        display_contacts_menu()
+        choice = input("Enter your choice: ").strip()
 
-def update_opportunity_command(args):
-    update_params = {}
-    if args.name is not None:
-        update_params['name'] = args.name
-    if args.description is not None:
-        update_params['description'] = args.description
-    if args.amount is not None:
-        update_params['amount'] = args.amount
-    if args.close_date is not None:
-        update_params['close_date'] = args.close_date
-    if args.account_id is not None:
-        update_params['account_id'] = args.account_id
-    if args.contact_id is not None:
-        update_params['contact_id'] = args.contact_id
+        if choice == '1': # Create Contact
+            first_name = input("Enter contact first name (required): ").strip()
+            last_name = input("Enter contact last name (required): ").strip()
+            email = input("Enter contact email (required, must be unique): ").strip()
+            phone = input("Enter contact phone (optional): ").strip() or None
+            account_id = get_integer_input("Enter associated account ID (optional, 0 for none): ")
+            account_id = account_id if account_id > 0 else None # Allow 0 or blank for no account
 
-    if not update_params:
-        print("No update parameters provided.")
-        return
+            if not first_name or not last_name or not email:
+                 print("First name, last name, and email are required.")
+                 continue
 
-    success = update_opportunity(args.opportunity_id, **update_params)
-    if success:
-        print(f"Opportunity with ID {args.opportunity_id} updated successfully.")
-    else:
-        print(f"Failed to update opportunity with ID {args.opportunity_id}. It might not exist or no changes were made.")
+            contact_id = create_contact(first_name, last_name, email, phone, account_id)
+            if contact_id:
+                print(f"Contact '{first_name} {last_name}' created successfully with ID: {contact_id}")
+            else:
+                print(f"Failed to create contact '{first_name} {last_name}'. Ensure email is unique and account ID is valid.")
 
-def delete_opportunity_command(args):
-    success = delete_opportunity(args.opportunity_id)
-    if success:
-        print(f"Opportunity with ID {args.opportunity_id} deleted successfully.")
-    else:
-        print(f"Failed to delete opportunity with ID {args.opportunity_id}. It might not exist.")
+        elif choice == '2': # List Contacts
+            contacts = list_contacts()
+            if contacts:
+                print("\n--- Contacts ---")
+                for contact in contacts:
+                    print(f"ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}, Phone: {contact['phone']}, Account ID: {contact['account_id']}, Created: {contact['created_at']}")
+                print("----------------")
+            else:
+                print("No contacts found.")
+
+        elif choice == '3': # Get Contact by ID
+            contact_id = get_integer_input("Enter contact ID to get: ")
+            contact = get_contact(contact_id)
+            if contact:
+                print("\n--- Contact Details ---")
+                print(f"ID: {contact['contact_id']}")
+                print(f"Name: {contact['first_name']} {contact['last_name']}")
+                print(f"Email: {contact['email']}")
+                print(f"Phone: {contact['phone']}")
+                print(f"Account ID: {contact['account_id']}")
+                print(f"Created: {contact['created_at']}")
+                print("-----------------------")
+            else:
+                print(f"Contact with ID {contact_id} not found.")
+
+        elif choice == '4': # Update Contact by ID
+            contact_id = get_integer_input("Enter contact ID to update: ")
+            contact = get_contact(contact_id)
+            if not contact:
+                print(f"Contact with ID {contact_id} not found.")
+                continue
+
+            print(f"Current Contact Details: ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}, Phone: {contact['phone']}, Account ID: {contact['account_id']}")
+            new_first_name = input(f"Enter new first name (leave blank to keep '{contact['first_name']}'): ").strip() or None
+            new_last_name = input(f"Enter new last name (leave blank to keep '{contact['last_name']}'): ").strip() or None
+            new_email = input(f"Enter new email (leave blank to keep '{contact['email']}'): ").strip() or None
+            new_phone = input(f"Enter new phone (leave blank to keep '{contact['phone']}'): ").strip() or None
+            new_account_id_str = input(f"Enter new account ID (leave blank to keep '{contact['account_id'] or 'None'}', enter 0 for none): ").strip()
+
+            new_account_id = None
+            if new_account_id_str == '0':
+                 new_account_id = None # Explicitly set to None if user enters 0
+            elif new_account_id_str:
+                 try:
+                     new_account_id = int(new_account_id_str)
+                 except ValueError:
+                     print("Invalid account ID entered. Keeping old value.")
+                     new_account_id = contact['account_id'] # Revert to old value on invalid input
+            else:
+                 new_account_id = contact['account_id'] # Keep old value if blank
+
+            update_params = {}
+            if new_first_name is not None:
+                update_params['first_name'] = new_first_name
+            if new_last_name is not None:
+                update_params['last_name'] = new_last_name
+            if new_email is not None:
+                update_params['email'] = new_email
+            if new_phone is not None:
+                update_params['phone'] = new_phone
+            # Only update account_id if the user provided a valid input (either a number or 0)
+            if new_account_id_str or new_account_id_str == '0':
+                 update_params['account_id'] = new_account_id
+
+
+            if not update_params:
+                print("No update parameters provided.")
+                continue
+
+            success = update_contact(contact_id, **update_params)
+            if success:
+                print(f"Contact with ID {contact_id} updated successfully.")
+            else:
+                print(f"Failed to update contact with ID {contact_id}. Ensure email is unique and account ID is valid.") # DAL prints specific error
+
+        elif choice == '5': # Delete Contact by ID
+            contact_id = get_integer_input("Enter contact ID to delete: ")
+            success = delete_contact(contact_id)
+            if success:
+                print(f"Contact with ID {contact_id} deleted successfully.")
+            else:
+                print(f"Failed to delete contact with ID {contact_id}. It might not exist.")
+
+        elif choice == '6': # Back
+            break
+
+        else:
+            print("Invalid choice. Please try again.")
+
+def handle_opportunities_menu():
+    """Handles the opportunities management menu loop."""
+    while True:
+        display_opportunities_menu()
+        choice = input("Enter your choice: ").strip()
+
+        if choice == '1': # Create Opportunity
+            name = input("Enter opportunity name (required): ").strip()
+            description = input("Enter description (optional): ").strip() or None
+            amount_str = input("Enter amount (optional, leave blank for none): ").strip()
+            amount = float(amount_str) if amount_str else None
+            close_date = input("Enter expected close date (YYYY-MM-DD, optional): ").strip() or None # TODO: Add date validation
+            account_id = get_integer_input("Enter associated account ID (required): ")
+            contact_id = get_integer_input("Enter associated contact ID (optional, 0 for none): ")
+            contact_id = contact_id if contact_id > 0 else None # Allow 0 or blank for no contact
+
+            if not name or not account_id:
+                print("Name and Account ID are required.")
+                continue
+
+            opportunity_id = create_opportunity(name, description, amount, close_date, account_id, contact_id)
+            if opportunity_id:
+                print(f"Opportunity '{name}' created successfully with ID: {opportunity_id}")
+            else:
+                print(f"Failed to create opportunity '{name}'. Ensure account ID is valid.") # DAL prints specific error
+
+        elif choice == '2': # List Opportunities
+            opportunities = list_opportunities()
+            if opportunities:
+                print("\n--- Opportunities ---")
+                for opp in opportunities:
+                    print(f"ID: {opp['opportunity_id']}, Name: {opp['name']}, Amount: {opp['amount']}, Close Date: {opp['close_date']}, Account ID: {opp['account_id']}, Contact ID: {opp['contact_id']}, Created: {opp['created_at']}")
+                print("---------------------")
+            else:
+                print("No opportunities found.")
+
+        elif choice == '3': # Get Opportunity by ID
+            opportunity_id = get_integer_input("Enter opportunity ID to get: ")
+            opportunity = get_opportunity(opportunity_id)
+            if opportunity:
+                print("\n--- Opportunity Details ---")
+                print(f"ID: {opportunity['opportunity_id']}")
+                print(f"Name: {opportunity['name']}")
+                print(f"Description: {opportunity['description']}")
+                print(f"Amount: {opportunity['amount']}")
+                print(f"Close Date: {opportunity['close_date']}")
+                print(f"Account ID: {opportunity['account_id']}")
+                print(f"Contact ID: {opportunity['contact_id']}")
+                print(f"Created: {opportunity['created_at']}")
+                print("-------------------------")
+            else:
+                print(f"Opportunity with ID {opportunity_id} not found.")
+
+        elif choice == '4': # Update Opportunity by ID
+            opportunity_id = get_integer_input("Enter opportunity ID to update: ")
+            opportunity = get_opportunity(opportunity_id)
+            if not opportunity:
+                print(f"Opportunity with ID {opportunity_id} not found.")
+                continue
+
+            print(f"Current Opportunity Details: ID: {opportunity['opportunity_id']}, Name: {opportunity['name']}, Amount: {opportunity['amount']}, Close Date: {opportunity['close_date']}, Account ID: {opportunity['account_id']}, Contact ID: {opportunity['contact_id']}")
+
+            new_name = input(f"Enter new name (leave blank to keep '{opportunity['name']}'): ").strip() or None
+            new_description = input(f"Enter new description (leave blank to keep '{opportunity['description']}'): ").strip() or None
+            new_amount_str = input(f"Enter new amount (leave blank to keep '{opportunity['amount'] or 'None'}'): ").strip()
+            new_close_date = input(f"Enter new close date (YYYY-MM-DD, leave blank to keep '{opportunity['close_date'] or 'None'}'): ").strip() or None # TODO: Add date validation
+            new_account_id_str = input(f"Enter new account ID (leave blank to keep '{opportunity['account_id'] or 'None'}'): ").strip()
+            new_contact_id_str = input(f"Enter new contact ID (leave blank to keep '{opportunity['contact_id'] or 'None']}', enter 0 for none): ").strip()
+
+            new_amount = None
+            if new_amount_str:
+                try:
+                    new_amount = float(new_amount_str)
+                except ValueError:
+                    print("Invalid amount entered. Keeping old value.")
+                    new_amount = opportunity['amount'] # Revert to old value on invalid input
+            else:
+                new_amount = opportunity['amount'] # Keep old value if blank
+
+            new_account_id = None
+            if new_account_id_str:
+                 try:
+                     new_account_id = int(new_account_id_str)
+                 except ValueError:
+                     print("Invalid account ID entered. Keeping old value.")
+                     new_account_id = opportunity['account_id'] # Revert to old value on invalid input
+            else:
+                 new_account_id = opportunity['account_id'] # Keep old value if blank
+
+            new_contact_id = None
+            if new_contact_id_str == '0':
+                 new_contact_id = None # Explicitly set to None if user enters 0
+            elif new_contact_id_str:
+                 try:
+                     new_contact_id = int(new_contact_id_str)
+                 except ValueError:
+                     print("Invalid contact ID entered. Keeping old value.")
+                     new_contact_id = opportunity['contact_id'] # Revert to old value on invalid input
+            else:
+                 new_contact_id = opportunity['contact_id'] # Keep old value if blank
+
+
+            update_params = {}
+            if new_name is not None:
+                update_params['name'] = new_name
+            if new_description is not None:
+                update_params['description'] = new_description
+            # Only update amount if the user provided a valid input
+            if new_amount_str:
+                 update_params['amount'] = new_amount
+            if new_close_date is not None:
+                update_params['close_date'] = new_close_date
+            # Only update account_id if the user provided a valid input
+            if new_account_id_str:
+                 update_params['account_id'] = new_account_id
+            # Only update contact_id if the user provided a valid input (number or 0)
+            if new_contact_id_str or new_contact_id_str == '0':
+                 update_params['contact_id'] = new_contact_id
+
+
+            if not update_params:
+                print("No update parameters provided.")
+                continue
+
+            success = update_opportunity(opportunity_id, **update_params)
+            if success:
+                print(f"Opportunity with ID {opportunity_id} updated successfully.")
+            else:
+                print(f"Failed to update opportunity with ID {opportunity_id}. Ensure account/contact IDs are valid.") # DAL prints specific error
+
+
+        elif choice == '5': # Delete Opportunity by ID
+            opportunity_id = get_integer_input("Enter opportunity ID to delete: ")
+            success = delete_opportunity(opportunity_id)
+            if success:
+                print(f"Opportunity with ID {opportunity_id} deleted successfully.")
+            else:
+                print(f"Failed to delete opportunity with ID {opportunity_id}. It might not exist.")
+
+        elif choice == '6': # Back
+            break
+
+        else:
+            print("Invalid choice. Please try again.")
 
 
 def main():
     """
     Main function for the CRM CLI application.
-    Handles command-line arguments and dispatches to appropriate CRM functions.
+    Displays menus and handles user interaction.
     """
     # Ensure database tables exist
     create_tables()
 
-    parser = argparse.ArgumentParser(description="Simple CRM CLI Application")
+    print("Welcome to the Simple CRM CLI Application!")
 
-    # Add subparsers for different CRM objects (accounts, contacts, opportunities)
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    while True:
+        display_main_menu()
+        choice = input("Enter your choice: ").strip()
 
-    # --- Account Commands ---
-    account_parser = subparsers.add_parser('accounts', help='Manage accounts')
-    account_subparsers = account_parser.add_subparsers(dest='account_command', help='Account commands')
-
-    # accounts create
-    create_account_parser = account_subparsers.add_parser('create', help='Create a new account')
-    create_account_parser.add_argument('--name', required=True, help='Name of the account')
-    create_account_parser.add_argument('--industry', help='Industry of the account')
-    create_account_parser.set_defaults(func=create_account_command) # Link to function
-
-    # accounts list
-    list_accounts_parser = account_subparsers.add_parser('list', help='List all accounts')
-    list_accounts_parser.set_defaults(func=list_accounts_command) # Link to function
-
-    # accounts get <id>
-    get_account_parser = account_subparsers.add_parser('get', help='Get account details by ID')
-    get_account_parser.add_argument('account_id', type=int, help='ID of the account')
-    get_account_parser.set_defaults(func=get_account_command) # Link to function
-
-    # accounts update <id>
-    update_account_parser = account_subparsers.add_parser('update', help='Update an account by ID')
-    update_account_parser.add_argument('account_id', type=int, help='ID of the account')
-    update_account_parser.add_argument('--name', help='New name for the account')
-    update_account_parser.add_argument('--industry', help='New industry for the account')
-    update_account_parser.set_defaults(func=update_account_command) # Link to function
-
-    # accounts delete <id>
-    delete_account_parser = account_subparsers.add_parser('delete', help='Delete an account by ID')
-    delete_account_parser.add_argument('account_id', type=int, help='ID of the account')
-    delete_account_parser.set_defaults(func=delete_account_command) # Link to function
-
-
-    # --- Contact Commands ---
-    contact_parser = subparsers.add_parser('contacts', help='Manage contacts')
-    contact_subparsers = contact_parser.add_subparsers(dest='contact_command', help='Contact commands')
-
-    # contacts create
-    create_contact_parser = contact_subparsers.add_parser('create', help='Create a new contact')
-    create_contact_parser.add_argument('--first-name', required=True, help='First name of the contact')
-    create_contact_parser.add_argument('--last-name', required=True, help='Last name of the contact')
-    create_contact_parser.add_argument('--email', required=True, help='Email of the contact (must be unique)')
-    create_contact_parser.add_argument('--phone', help='Phone number of the contact')
-    create_contact_parser.add_argument('--account-id', type=int, help='ID of the associated account')
-    create_contact_parser.set_defaults(func=create_contact_command) # Link to function
-
-    # contacts list
-    list_contacts_parser = contact_subparsers.add_parser('list', help='List all contacts')
-    list_contacts_parser.set_defaults(func=list_contacts_command) # Link to function
-
-    # contacts get <id>
-    get_contact_parser = contact_subparsers.add_parser('get', help='Get contact details by ID')
-    get_contact_parser.add_argument('contact_id', type=int, help='ID of the contact')
-    get_contact_parser.set_defaults(func=get_contact_command) # Link to function
-
-    # contacts update <id>
-    update_contact_parser = contact_subparsers.add_parser('update', help='Update a contact by ID')
-    update_contact_parser.add_argument('contact_id', type=int, help='ID of the contact')
-    update_contact_parser.add_argument('--first-name', help='New first name')
-    update_contact_parser.add_argument('--last-name', help='New last name')
-    update_contact_parser.add_argument('--email', help='New email')
-    update_contact_parser.add_argument('--phone', help='New phone number')
-    update_contact_parser.add_argument('--account-id', type=int, help='New associated account ID')
-    update_contact_parser.set_defaults(func=update_contact_command) # Link to function
-
-    # contacts delete <id>
-    delete_contact_parser = contact_subparsers.add_parser('delete', help='Delete a contact by ID')
-    delete_contact_parser.add_argument('contact_id', type=int, help='ID of the contact')
-    delete_contact_parser.set_defaults(func=delete_contact_command) # Link to function
-
-
-    # --- Opportunity Commands ---
-    opportunity_parser = subparsers.add_parser('opportunities', help='Manage opportunities')
-    opportunity_subparsers = opportunity_parser.add_subparsers(dest='opportunity_command', help='Opportunity commands')
-
-    # opportunities create
-    create_opportunity_parser = opportunity_subparsers.add_parser('create', help='Create a new opportunity')
-    create_opportunity_parser.add_argument('--name', required=True, help='Name of the opportunity')
-    create_opportunity_parser.add_argument('--description', help='Description of the opportunity')
-    create_opportunity_parser.add_argument('--amount', type=float, help='Amount of the opportunity')
-    create_opportunity_parser.add_argument('--close-date', help='Expected close date (YYYY-MM-DD)') # TODO: Add date validation
-    create_opportunity_parser.add_argument('--account-id', type=int, required=True, help='ID of the associated account')
-    create_opportunity_parser.add_argument('--contact-id', type=int, help='ID of the associated contact') # TODO: Validate contact belongs to account?
-    create_opportunity_parser.set_defaults(func=create_opportunity_command) # Link to function
-
-    # opportunities list
-    list_opportunities_parser = opportunity_subparsers.add_parser('list', help='List all opportunities')
-    list_opportunities_parser.set_defaults(func=list_opportunities_command) # Link to function
-
-    # opportunities get <id>
-    get_opportunity_parser = opportunity_subparsers.add_parser('get', help='Get opportunity details by ID')
-    get_opportunity_parser.add_argument('opportunity_id', type=int, help='ID of the opportunity')
-    get_opportunity_parser.set_defaults(func=get_opportunity_command) # Link to function
-
-    # opportunities update <id>
-    update_opportunity_parser = opportunity_subparsers.add_parser('update', help='Update an opportunity by ID')
-    update_opportunity_parser.add_argument('opportunity_id', type=int, help='ID of the opportunity')
-    update_opportunity_parser.add_argument('--name', help='New name')
-    update_opportunity_parser.add_argument('--description', help='New description')
-    update_opportunity_parser.add_argument('--amount', type=float, help='New amount')
-    update_opportunity_parser.add_argument('--close-date', help='New close date (YYYY-MM-DD)') # TODO: Add date validation
-    update_opportunity_parser.add_argument('--account-id', type=int, help='New associated account ID')
-    update_opportunity_parser.add_argument('--contact-id', type=int, help='New associated contact ID') # TODO: Validate contact belongs to account?
-    update_opportunity_parser.set_defaults(func=update_opportunity_command) # Link to function
-
-    # opportunities delete <id>
-    delete_opportunity_parser = opportunity_subparsers.add_parser('delete', help='Delete an opportunity by ID')
-    delete_opportunity_parser.add_argument('opportunity_id', type=int, help='ID of the opportunity')
-    delete_opportunity_parser.set_defaults(func=delete_opportunity_command) # Link to function
-
-
-    # If no arguments are provided, print help message
-    if len(sys.argv) == 1:
-        parser.print_help(sys.stderr)
-        sys.exit(1)
-
-    args = parser.parse_args()
-
-    # Dispatch commands based on args.func
-    if hasattr(args, 'func'):
-        args.func(args)
-    else:
-        # This case should ideally not be reached if subparsers are used correctly
-        parser.print_help(sys.stderr)
-        sys.exit(1)
+        if choice == '1':
+            handle_accounts_menu()
+        elif choice == '2':
+            handle_contacts_menu()
+        elif choice == '3':
+            handle_opportunities_menu()
+        elif choice == '4':
+            print("Exiting application. Goodbye!")
+            sys.exit(0)
+        else:
+            print("Invalid choice. Please try again.")
 
 
 if __name__ == "__main__":
@@ -337,4 +430,5 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+        sys.exit(1)
 

@@ -1,18 +1,12 @@
-# Template Application
+# Simple CRM CLI Application
 
-A Python program.
+A Python command-line application for managing Accounts, Contacts, and Opportunities.
 
 ## Features
 
-- **Feature 1**: This is feature 1
-
-## Demo Functionality
-
-The application provides a simple menu with the following options:
-
-- **Say Hello**: Prints "Hello, World!" or "Hello, [Name]!" if a name is provided via the `--name` command-line argument.
-- **Get Time**: Displays the current date and time.
-- **Get Latest News**: Fetches and displays the top 5 latest news headlines from Google News.
+- **CRUD Operations**: Create, Read, Update, and Delete functionality for Accounts, Contacts, and Opportunities.
+- **Data Storage**: Uses SQLite3 for persistent storage.
+- **Menu-Driven Interface**: Interact with the application through simple menus.
 
 ## Requirements
 
@@ -42,11 +36,13 @@ The application provides a simple menu with the following options:
 
 ## Usage
 
-Run the application:
+Run the application and follow the on-screen menus:
 
 ```bash
 python main.py
 ```
+
+The application will present a main menu, and you can navigate through sub-menus for Accounts, Contacts, and Opportunities to perform CRUD operations.
 
 ## Environment Variables
 
