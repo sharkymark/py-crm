@@ -20,11 +20,10 @@ def display_accounts_menu():
     print("\n--- Manage Accounts ---")
     print("1. Create Account")
     print("2. List All Accounts")
-    print("3. Get Account by ID")
-    print("4. Update Account by ID")
-    print("5. Delete Account by ID")
-    print("7. Search Accounts by Name") # Added Search Option
-    print("6. Back to Main Menu")
+    print("3. Get Account") # Removed "by ID"
+    print("4. Update Account") # Removed "by ID"
+    print("5. Delete Account") # Removed "by ID"
+    print("6. Back to Main Menu") # Renumbered
     print("-----------------------")
 
 def display_contacts_menu():
@@ -32,11 +31,10 @@ def display_contacts_menu():
     print("\n--- Manage Contacts ---")
     print("1. Create Contact")
     print("2. List All Contacts")
-    print("3. Get Contact by ID")
-    print("4. Update Contact by ID")
-    print("5. Delete Contact by ID")
-    print("7. Search Contacts by Name/Email") # Added Search Option
-    print("6. Back to Main Menu")
+    print("3. Get Contact") # Removed "by ID"
+    print("4. Update Contact") # Removed "by ID"
+    print("5. Delete Contact") # Removed "by ID"
+    print("6. Back to Main Menu") # Renumbered
     print("-----------------------")
 
 def display_opportunities_menu():
@@ -44,11 +42,10 @@ def display_opportunities_menu():
     print("\n--- Manage Opportunities ---")
     print("1. Create Opportunity")
     print("2. List All Opportunities")
-    print("3. Get Opportunity by ID")
-    print("4. Update Opportunity by ID")
-    print("5. Delete Opportunity by ID")
-    print("7. Search Opportunities by Name/Description") # Added Search Option
-    print("6. Back to Main Menu")
+    print("3. Get Opportunity") # Removed "by ID"
+    print("4. Update Opportunity") # Removed "by ID"
+    print("5. Delete Opportunity") # Removed "by ID"
+    print("6. Back to Main Menu") # Renumbered
     print("--------------------------")
 
 def get_integer_input(prompt):
@@ -185,61 +182,60 @@ def select_contact_by_search(prompt="Enter Contact Name, Email, or ID (or 'back'
                     print("Invalid ID selected.")
                     continue # Ask again
 
+def select_opportunity_by_search(prompt="Enter Opportunity Name, Description, or ID (or 'back'): "):
+    """
+    Prompts user to search for an opportunity by name/description or enter an ID,
+    handles search results, and returns the selected opportunity ID or None/back.
+    Returns None if user leaves search blank and it's optional.
+    """
+    while True:
+        query = input(prompt).strip()
+        if query.lower() == 'back':
+            return 'back'
+        if not query:
+            # If query is empty, return None. This is useful for optional fields.
+            # The caller needs to handle whether None is acceptable.
+            return None
 
-# --- Search Handlers ---
-def search_accounts_command():
-    """Handles searching for accounts."""
-    query = input("Enter search term for Account Name (or 'back'): ").strip()
-    if query.lower() == 'back':
-        return
-    if not query:
-        print("Search term cannot be empty.")
-        return
-
-    accounts = search_accounts(query)
-    if accounts:
-        print(f"\n--- Search Results for Accounts matching '{query}' ---")
-        for account in accounts:
-            print(f"ID: {account['account_id']}, Name: {account['name']}, Industry: {account['industry']}, Created: {account['created_at']}")
-        print("----------------------------------------------------")
-    else:
-        print(f"No accounts found matching '{query}'.")
-
-def search_contacts_command():
-    """Handles searching for contacts."""
-    query = input("Enter search term for Contact Name or Email (or 'back'): ").strip()
-    if query.lower() == 'back':
-        return
-    if not query:
-        print("Search term cannot be empty.")
-        return
-
-    contacts = search_contacts(query)
-    if contacts:
-        print(f"\n--- Search Results for Contacts matching '{query}' ---")
-        for contact in contacts:
-            print(f"ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}, Phone: {contact['phone']}, Account ID: {contact['account_id']}, Created: {contact['created_at']}")
-        print("-----------------------------------------------------")
-    else:
-        print(f"No contacts found matching '{query}'.")
-
-def search_opportunities_command():
-    """Handles searching for opportunities."""
-    query = input("Enter search term for Opportunity Name or Description (or 'back'): ").strip()
-    if query.lower() == 'back':
-        return
-    if not query:
-        print("Search term cannot be empty.")
-        return
-
-    opportunities = search_opportunities(query)
-    if opportunities:
-        print(f"\n--- Search Results for Opportunities matching '{query}' ---")
-        for opp in opportunities:
-            print(f"ID: {opp['opportunity_id']}, Name: {opp['name']}, Amount: {opp['amount']}, Close Date: {opp['close_date']}, Account ID: {opp['account_id']}, Contact ID: {opp['contact_id']}, Created: {opp['created_at']}")
-        print("---------------------------------------------------------")
-    else:
-        print(f"No opportunities found matching '{query}'.")
+        try:
+            # Try interpreting input as an ID
+            opportunity_id = int(query)
+            opportunity = get_opportunity(opportunity_id)
+            if opportunity:
+                print(f"Selected Opportunity: ID: {opportunity['opportunity_id']}, Name: {opportunity['name']}")
+                return opportunity_id
+            else:
+                print(f"No opportunity found with ID: {opportunity_id}")
+                continue # Ask again
+        except ValueError:
+            # Input is not an integer, perform search
+            opportunities = search_opportunities(query)
+            if not opportunities:
+                print(f"No opportunities found matching '{query}'.")
+                continue # Ask again
+            elif len(opportunities) == 1:
+                opportunity = opportunities[0]
+                print(f"Found 1 matching opportunity: ID: {opportunity['opportunity_id']}, Name: {opportunity['name']}, Amount: {opportunity['amount']}")
+                confirm = input("Use this opportunity? (yes/no or 'back'): ").strip().lower()
+                if confirm == 'yes' or confirm == 'y':
+                    return opportunity['opportunity_id']
+                elif confirm == 'back':
+                    return 'back'
+                else:
+                    continue # Ask again
+            else:
+                print(f"Found {len(opportunities)} matching opportunities:")
+                for opp in opportunities:
+                    print(f"  ID: {opp['opportunity_id']}, Name: {opp['name']}, Amount: {opp['amount']}")
+                select_id_input = get_integer_input("Enter the ID of the opportunity to select (or 'back'): ")
+                if select_id_input == 'back':
+                    return 'back'
+                selected_opportunity = get_opportunity(select_id_input)
+                if selected_opportunity:
+                    return selected_opportunity['opportunity_id']
+                else:
+                    print("Invalid ID selected.")
+                    continue # Ask again
 
 
 # --- Menu Handlers ---
@@ -271,12 +267,15 @@ def handle_accounts_menu():
             else:
                 print("No accounts found.")
 
-        elif choice == '3': # Get Account by ID
-            account_id_input = get_integer_input("Enter account ID to get (or 'back'): ")
-            if account_id_input == 'back': continue
-            account_id = account_id_input
+        elif choice == '3': # Get Account (by search/ID)
+            print("\n--- Get Account ---")
+            account_id_selection = select_account_by_search("Enter Account Name or ID to get (or 'back'): ")
+            if account_id_selection == 'back': continue
+            if account_id_selection is None: # User left blank, but Get requires selection
+                 print("Account selection is required to get details.")
+                 continue
 
-            account = get_account(account_id)
+            account = get_account(account_id_selection)
             if account:
                 print("\n--- Account Details ---")
                 print(f"ID: {account['account_id']}")
@@ -285,14 +284,20 @@ def handle_accounts_menu():
                 print(f"Created: {account['created_at']}")
                 print("-----------------------")
             else:
-                print(f"Account with ID {account_id} not found.")
+                # This case should ideally not be reached if select_account_by_search returns a valid ID
+                print(f"Account with ID {account_id_selection} not found.")
 
-        elif choice == '4': # Update Account by ID
-            account_id_input = get_integer_input("Enter account ID to update (or 'back'): ")
-            if account_id_input == 'back': continue
-            account_id = account_id_input
 
-            account = get_account(account_id)
+        elif choice == '4': # Update Account (by search/ID)
+            print("\n--- Update Account ---")
+            account_id_selection = select_account_by_search("Enter Account Name or ID to update (or 'back'): ")
+            if account_id_selection == 'back': continue
+            if account_id_selection is None: # User left blank, but Update requires selection
+                 print("Account selection is required to update.")
+                 continue
+            account_id = account_id_selection # Use the selected ID
+
+            account = get_account(account_id) # Re-fetch to show current details
             if not account:
                 print(f"Account with ID {account_id} not found.")
                 continue
@@ -317,19 +322,20 @@ def handle_accounts_menu():
             else:
                 print(f"Failed to update account with ID {account_id}.") # DAL prints specific error
 
-        elif choice == '5': # Delete Account by ID
-            account_id_input = get_integer_input("Enter account ID to delete (or 'back'): ")
-            if account_id_input == 'back': continue
-            account_id = account_id_input
+        elif choice == '5': # Delete Account (by search/ID)
+            print("\n--- Delete Account ---")
+            account_id_selection = select_account_by_search("Enter Account Name or ID to delete (or 'back'): ")
+            if account_id_selection == 'back': continue
+            if account_id_selection is None: # User left blank, but Delete requires selection
+                 print("Account selection is required to delete.")
+                 continue
+            account_id = account_id_selection # Use the selected ID
 
             success = delete_account(account_id)
             if success:
                 print(f"Account with ID {account_id} deleted successfully.")
             else:
                 print(f"Failed to delete account with ID {account_id}. It might not exist.")
-
-        elif choice == '7': # Search Accounts
-            search_accounts_command()
 
         elif choice == '6': # Back
             break
@@ -375,12 +381,15 @@ def handle_contacts_menu():
             else:
                 print("No contacts found.")
 
-        elif choice == '3': # Get Contact by ID
-            contact_id_input = get_integer_input("Enter contact ID to get (or 'back'): ")
-            if contact_id_input == 'back': continue
-            contact_id = contact_id_input
+        elif choice == '3': # Get Contact (by search/ID)
+            print("\n--- Get Contact ---")
+            contact_id_selection = select_contact_by_search("Enter Contact Name, Email, or ID to get (or 'back'): ")
+            if contact_id_selection == 'back': continue
+            if contact_id_selection is None: # User left blank, but Get requires selection
+                 print("Contact selection is required to get details.")
+                 continue
 
-            contact = get_contact(contact_id)
+            contact = get_contact(contact_id_selection)
             if contact:
                 print("\n--- Contact Details ---")
                 print(f"ID: {contact['contact_id']}")
@@ -391,14 +400,19 @@ def handle_contacts_menu():
                 print(f"Created: {contact['created_at']}")
                 print("-----------------------")
             else:
-                print(f"Contact with ID {contact_id} not found.")
+                 # This case should ideally not be reached if select_contact_by_search returns a valid ID
+                print(f"Contact with ID {contact_id_selection} not found.")
 
-        elif choice == '4': # Update Contact by ID
-            contact_id_input = get_integer_input("Enter contact ID to update (or 'back'): ")
-            if contact_id_input == 'back': continue
-            contact_id = contact_id_input
+        elif choice == '4': # Update Contact (by search/ID)
+            print("\n--- Update Contact ---")
+            contact_id_selection = select_contact_by_search("Enter Contact Name, Email, or ID to update (or 'back'): ")
+            if contact_id_selection == 'back': continue
+            if contact_id_selection is None: # User left blank, but Update requires selection
+                 print("Contact selection is required to update.")
+                 continue
+            contact_id = contact_id_selection # Use the selected ID
 
-            contact = get_contact(contact_id)
+            contact = get_contact(contact_id) # Re-fetch to show current details
             if not contact:
                 print(f"Contact with ID {contact_id} not found.")
                 continue
@@ -458,19 +472,20 @@ def handle_contacts_menu():
             else:
                 print(f"Failed to update contact with ID {contact_id}. Ensure email is unique and account ID is valid.") # DAL prints specific error
 
-        elif choice == '5': # Delete Contact by ID
-            contact_id_input = get_integer_input("Enter contact ID to delete (or 'back'): ")
-            if contact_id_input == 'back': continue
-            contact_id = contact_id_input
+        elif choice == '5': # Delete Contact (by search/ID)
+            print("\n--- Delete Contact ---")
+            contact_id_selection = select_contact_by_search("Enter Contact Name, Email, or ID to delete (or 'back'): ")
+            if contact_id_selection == 'back': continue
+            if contact_id_selection is None: # User left blank, but Delete requires selection
+                 print("Contact selection is required to delete.")
+                 continue
+            contact_id = contact_id_selection # Use the selected ID
 
             success = delete_contact(contact_id)
             if success:
                 print(f"Contact with ID {contact_id} deleted successfully.")
             else:
                 print(f"Failed to delete contact with ID {contact_id}. It might not exist.")
-
-        elif choice == '7': # Search Contacts
-            search_contacts_command()
 
         elif choice == '6': # Back
             break
@@ -531,12 +546,15 @@ def handle_opportunities_menu():
             else:
                 print("No opportunities found.")
 
-        elif choice == '3': # Get Opportunity by ID
-            opportunity_id_input = get_integer_input("Enter opportunity ID to get (or 'back'): ")
-            if opportunity_id_input == 'back': continue
-            opportunity_id = opportunity_id_input
+        elif choice == '3': # Get Opportunity (by search/ID)
+            print("\n--- Get Opportunity ---")
+            opportunity_id_selection = select_opportunity_by_search("Enter Opportunity Name, Description, or ID to get (or 'back'): ")
+            if opportunity_id_selection == 'back': continue
+            if opportunity_id_selection is None: # User left blank, but Get requires selection
+                 print("Opportunity selection is required to get details.")
+                 continue
 
-            opportunity = get_opportunity(opportunity_id)
+            opportunity = get_opportunity(opportunity_id_selection)
             if opportunity:
                 print("\n--- Opportunity Details ---")
                 print(f"ID: {opportunity['opportunity_id']}")
@@ -549,14 +567,19 @@ def handle_opportunities_menu():
                 print(f"Created: {opportunity['created_at']}")
                 print("-------------------------")
             else:
-                print(f"Opportunity with ID {opportunity_id} not found.")
+                 # This case should ideally not be reached if select_opportunity_by_search returns a valid ID
+                print(f"Opportunity with ID {opportunity_id_selection} not found.")
 
-        elif choice == '4': # Update Opportunity by ID
-            opportunity_id_input = get_integer_input("Enter opportunity ID to update (or 'back'): ")
-            if opportunity_id_input == 'back': continue
-            opportunity_id = opportunity_id_input
+        elif choice == '4': # Update Opportunity (by search/ID)
+            print("\n--- Update Opportunity ---")
+            opportunity_id_selection = select_opportunity_by_search("Enter Opportunity Name, Description, or ID to update (or 'back'): ")
+            if opportunity_id_selection == 'back': continue
+            if opportunity_id_selection is None: # User left blank, but Update requires selection
+                 print("Opportunity selection is required to update.")
+                 continue
+            opportunity_id = opportunity_id_selection # Use the selected ID
 
-            opportunity = get_opportunity(opportunity_id)
+            opportunity = get_opportunity(opportunity_id) # Re-fetch to show current details
             if not opportunity:
                 print(f"Opportunity with ID {opportunity_id} not found.")
                 continue
@@ -566,11 +589,19 @@ def handle_opportunities_menu():
             new_name = input(f"Enter new name (leave blank to keep '{opportunity['name']}'): ").strip() or None
             new_description = input(f"Enter new description (leave blank to keep '{opportunity['description']}'): ").strip() or None
 
-            new_amount_input = get_float_input("Enter new amount (leave blank to keep '{}', or 'back'): ".format(opportunity['amount'] or 'None'))
-            if new_amount_input == 'back': continue
-            new_amount = new_amount_input # Will be float or None
+            new_amount_input_str = input("Enter new amount (leave blank to keep '{}', or 'back'): ".format(opportunity['amount'] or 'None')).strip()
+            if new_amount_input_str.lower() == 'back': continue
+            new_amount = None
+            if new_amount_input_str:
+                try:
+                    new_amount = float(new_amount_input_str)
+                except ValueError:
+                    print("Invalid amount entered. Keeping old value.")
+                    new_amount = opportunity['amount'] # Revert to old value on invalid input
+            else:
+                new_amount = opportunity['amount'] # Keep old value if blank
 
-            # Fix the f-string syntax here
+
             new_close_date_input = input("Enter new close date (YYYY-MM-DD, leave blank to keep '{}', or 'back'): ".format(opportunity['close_date'] or 'None')).strip()
             if new_close_date_input.lower() == 'back': continue
             new_close_date = new_close_date_input or None # Set to None if empty after stripping
@@ -625,7 +656,8 @@ def handle_opportunities_menu():
                 update_params['description'] = new_description
             # Only update amount if the user provided a non-empty input string (handled by get_float_input returning float or None)
             # Check if new_amount is not None (user entered a number) OR if the original input string was empty (user cleared it)
-            if new_amount is not None or (new_amount_input is not None and str(new_amount_input).strip() == ''):
+            # Corrected logic: Check if the user provided *any* input for amount (new_amount_input_str is not empty)
+            if new_amount_input_str:
                  update_params['amount'] = new_amount
             if new_close_date is not None:
                 update_params['close_date'] = new_close_date
@@ -650,19 +682,20 @@ def handle_opportunities_menu():
                 print(f"Failed to update opportunity with ID {opportunity_id}. Ensure account/contact IDs are valid.") # DAL prints specific error
 
 
-        elif choice == '5': # Delete Opportunity by ID
-            opportunity_id_input = get_integer_input("Enter opportunity ID to delete (or 'back'): ")
-            if opportunity_id_input == 'back': continue
-            opportunity_id = opportunity_id_input
+        elif choice == '5': # Delete Opportunity (by search/ID)
+            print("\n--- Delete Opportunity ---")
+            opportunity_id_selection = select_opportunity_by_search("Enter Opportunity Name, Description, or ID to delete (or 'back'): ")
+            if opportunity_id_selection == 'back': continue
+            if opportunity_id_selection is None: # User left blank, but Delete requires selection
+                 print("Opportunity selection is required to delete.")
+                 continue
+            opportunity_id = opportunity_id_selection # Use the selected ID
 
             success = delete_opportunity(opportunity_id)
             if success:
                 print(f"Opportunity with ID {opportunity_id} deleted successfully.")
             else:
                 print(f"Failed to delete opportunity with ID {opportunity_id}. It might not exist.")
-
-        elif choice == '7': # Search Opportunities
-            search_opportunities_command()
 
         elif choice == '6': # Back
             break
