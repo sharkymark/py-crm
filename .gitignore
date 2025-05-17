@@ -4,3 +4,13 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Database file
+crm.db
+
+# Editor/IDE specific files
+.vscode/
+.idea/
+
+# Operating System files
+.DS_Store
