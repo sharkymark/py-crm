@@ -27,8 +27,8 @@ def create_account(name, industry):
         print(f"Database error creating account: {e}")
         return None
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 def get_account(account_id):
     """
@@ -48,8 +48,8 @@ def get_account(account_id):
         print(f"Database error getting account: {e}")
         return None
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 def list_accounts():
     """
@@ -69,8 +69,8 @@ def list_accounts():
         print(f"Database error listing accounts: {e}")
         return []
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 
 def update_account(account_id, name=None, industry=None):
@@ -108,8 +108,8 @@ def update_account(account_id, name=None, industry=None):
         print(f"Database error updating account: {e}")
         return False
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 def delete_account(account_id):
     """
@@ -130,8 +130,8 @@ def delete_account(account_id):
         print(f"Database error deleting account: {e}")
         return False
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 # --- Contact Operations ---
 def create_contact(first_name, last_name, email, phone, account_id):
@@ -156,8 +156,8 @@ def create_contact(first_name, last_name, email, phone, account_id):
         print(f"Database error creating contact: {e}")
         return None
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 def get_contact(contact_id):
     """
@@ -177,8 +177,8 @@ def get_contact(contact_id):
         print(f"Database error getting contact: {e}")
         return None
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 def list_contacts():
     """
@@ -198,8 +198,8 @@ def list_contacts():
         print(f"Database error listing contacts: {e}")
         return []
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 def update_contact(contact_id, first_name=None, last_name=None, email=None, phone=None, account_id=None):
     """
@@ -248,8 +248,8 @@ def update_contact(contact_id, first_name=None, last_name=None, email=None, phon
         print(f"Database error updating contact: {e}")
         return False
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 def delete_contact(contact_id):
     """
@@ -269,8 +269,8 @@ def delete_contact(contact_id):
         print(f"Database error deleting contact: {e}")
         return False
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 # --- Opportunity Operations ---
 def create_opportunity(name, description, amount, close_date, account_id, contact_id):
@@ -295,8 +295,8 @@ def create_opportunity(name, description, amount, close_date, account_id, contac
         print(f"Database error creating opportunity: {e}")
         return None
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 def get_opportunity(opportunity_id):
     """
@@ -316,8 +316,8 @@ def get_opportunity(opportunity_id):
         print(f"Database error getting opportunity: {e}")
         return None
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 def list_opportunities():
     """
@@ -337,8 +337,8 @@ def list_opportunities():
         print(f"Database error listing opportunities: {e}")
         return []
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 
 def update_opportunity(opportunity_id, name=None, description=None, amount=None, close_date=None, account_id=None, contact_id=None):
@@ -391,8 +391,8 @@ def update_opportunity(opportunity_id, name=None, description=None, amount=None,
         print(f"Database error updating opportunity: {e}")
         return False
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 def delete_opportunity(opportunity_id):
     """
@@ -412,5 +412,5 @@ def delete_opportunity(opportunity_id):
         print(f"Database error deleting opportunity: {e}")
         return False
     finally:
-        cursor.close()
-        conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
