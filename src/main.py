@@ -3,13 +3,52 @@ import csv
 import os
 from datetime import datetime, timezone # Added timezone
 # Update imports to use relative paths within the src directory
-from .database import create_tables
+from .database import initialize_database
+
+def truncate_text(text, max_length=30):
+    """
+    Truncates text to the specified maximum length and adds ellipsis if needed.
+    
+    Args:
+        text (str): The text to truncate
+        max_length (int): Maximum length before truncation (default: 30)
+        
+    Returns:
+        str: Truncated text with ellipsis if needed
+    """
+    if not text or text == 'N/A':
+        return 'N/A'
+    
+    text = str(text)  # Convert to string if not already
+    if len(text) <= max_length:
+        return text
+    
+    return text[:max_length-3] + '...'
 from .crm_dal import (
     create_account, get_account, list_accounts, update_account, delete_account, search_accounts,
     create_contact, get_contact, list_contacts, update_contact, delete_contact, search_contacts,
     create_opportunity, get_opportunity, list_opportunities, update_opportunity, delete_opportunity, search_opportunities,
     get_contacts_by_account, get_opportunities_by_account
 )
+
+def truncate_text(text, max_length=30):
+    """
+    Truncate text to specified length and add ellipsis if needed.
+    Also replaces newlines with spaces to ensure proper display in tables.
+    
+    Returns the original text if it's shorter than max_length, or truncated text with ellipsis.
+    """
+    if not text or text == 'N/A':
+        return "N/A"
+    
+    # Replace newlines with spaces to make it work well in tabular views
+    text_single_line = str(text).replace('\n', ' ')
+    
+    if len(text_single_line) <= max_length:
+        return text_single_line
+    else:
+        # Return truncated text with ellipsis
+        return text_single_line[:max_length-3] + "..."
 
 def convert_utc_to_local_display(utc_dt_str):
     """Converts a UTC datetime string to a local datetime string for display."""
@@ -115,6 +154,45 @@ def get_float_input(prompt):
             print("Invalid input. Please enter a number or 'back'.")
         except (KeyboardInterrupt, EOFError):
             graceful_exit()
+
+
+def get_multiline_input(prompt):
+    """
+    Gets multi-line input from the user.
+    User can enter text with newlines and end input by typing 'DONE' on a new line.
+    
+    Args:
+        prompt (str): The prompt to display to the user
+        
+    Returns:
+        str or None: The multi-line input or None if user left it empty
+        'back': If the user entered 'back' to go back
+    """
+    print(f"{prompt} (Type 'DONE' on a new line when finished, or 'BACK' to go back)")
+    lines = []
+    
+    while True:
+        try:
+            line = input()
+            # Check for end or back commands
+            if line.strip().upper() == 'DONE':
+                break
+            if line.strip().upper() == 'BACK':
+                return 'back'
+            
+            # Add the line to our collection
+            lines.append(line)
+        except (KeyboardInterrupt, EOFError):
+            graceful_exit()
+    
+    # Join the lines with newlines
+    result = '\n'.join(lines)
+    
+    # If the result is empty, return None
+    if not result.strip():
+        return None
+    
+    return result
 
 
 def select_account_by_search(prompt="Enter Account Name or ID (or 'back'): "):
@@ -414,7 +492,17 @@ def handle_accounts_menu():
                     print("Account name is required.")
                     continue
                 industry = input("Enter account industry (optional): ").strip() or None
-                account_id = create_account(name, industry)
+                description = get_multiline_input("Enter account description (optional):")
+                if description == 'back':
+                    continue
+                website = input("Enter account website (optional): ").strip() or None
+                street = input("Enter street address (optional): ").strip() or None
+                city = input("Enter city (optional): ").strip() or None
+                state = input("Enter state/province (optional): ").strip() or None
+                zip_code = input("Enter zip/postal code (optional): ").strip() or None
+                country = input("Enter country (optional): ").strip() or None
+                
+                account_id = create_account(name, industry, description, website, street, city, state, zip_code, country)
                 if account_id:
                     print(f"SUCCESS: Account '{name}' created with ID: {account_id}")
                 else:
@@ -429,11 +517,17 @@ def handle_accounts_menu():
                     min_id_width = len("ID") + padding
                     min_name_width = len("Name") + padding
                     min_industry_width = len("Industry") + padding
+                    min_description_width = len("Description") + padding
+                    min_website_width = len("Website") + padding
+                    min_location_width = len("Location") + padding
                     min_created_at_width = len("Created At") + padding
 
                     max_id_len = min_id_width
                     max_name_len = min_name_width
                     max_industry_len = min_industry_width
+                    max_description_len = min_description_width
+                    max_website_len = min_website_width
+                    max_location_len = min_location_width
                     # Created At is fixed width for now, can be dynamic if needed
                     # max_created_at_len = min_created_at_width
 
@@ -441,20 +535,53 @@ def handle_accounts_menu():
                         max_id_len = max(max_id_len, len(str(account['account_id'])) + padding)
                         max_name_len = max(max_name_len, len(account['name']) + padding)
                         max_industry_len = max(max_industry_len, len(account['industry'] or 'N/A') + padding)
+                        
+                        # Truncate description for display
+                        description = truncate_text(account['description'] or 'N/A')
+                        max_description_len = max(max_description_len, len(description) + padding)
+                        
+                        max_website_len = max(max_website_len, len(account['website'] or 'N/A') + padding)
+                        
+                        # Format location as city, state, country
+                        location_parts = []
+                        if account['city']:
+                            location_parts.append(account['city'])
+                        if account['state']:
+                            location_parts.append(account['state'])
+                        if account['country']:
+                            location_parts.append(account['country'])
+                        location = ", ".join(location_parts) if location_parts else "N/A"
+                        max_location_len = max(max_location_len, len(location) + padding)
                         # max_created_at_len = max(max_created_at_len, len(account['created_at']) + padding)
 
                     id_col_width = max_id_len
                     name_col_width = max_name_len
                     industry_col_width = max_industry_len
+                    description_col_width = max_description_len
+                    website_col_width = max_website_len
+                    location_col_width = max_location_len
                     created_at_col_width = 20 # Keep fixed or use max_created_at_len
 
-                    header = f"{'ID':<{id_col_width}} | {'Name':<{name_col_width}} | {'Industry':<{industry_col_width}} | {'Created At':<{created_at_col_width}}"
+                    header = f"{'ID':<{id_col_width}} | {'Name':<{name_col_width}} | {'Industry':<{industry_col_width}} | {'Description':<{description_col_width}} | {'Website':<{website_col_width}} | {'Location':<{location_col_width}} | {'Created At':<{created_at_col_width}}"
                     print(header)
                     print("-" * len(header))
                     for account in accounts:
                         industry_display = account['industry'] or 'N/A'
+                        description_display = truncate_text(account['description'] or 'N/A')
+                        website_display = account['website'] or 'N/A'
+                        
+                        # Format location as city, state, country
+                        location_parts = []
+                        if account['city']:
+                            location_parts.append(account['city'])
+                        if account['state']:
+                            location_parts.append(account['state'])
+                        if account['country']:
+                            location_parts.append(account['country'])
+                        location_display = ", ".join(location_parts) if location_parts else "N/A"
+                        
                         created_at_display = convert_utc_to_local_display(account['created_at'])
-                        print(f"{str(account['account_id']):<{id_col_width}} | {account['name']:<{name_col_width}} | {industry_display:<{industry_col_width}} | {created_at_display:<{created_at_col_width}}")
+                        print(f"{str(account['account_id']):<{id_col_width}} | {account['name']:<{name_col_width}} | {industry_display:<{industry_col_width}} | {description_display:<{description_col_width}} | {website_display:<{website_col_width}} | {location_display:<{location_col_width}} | {created_at_display:<{created_at_col_width}}")
                     print("-" * len(header))
                 else:
                     print("No accounts found.")
@@ -473,7 +600,15 @@ def handle_accounts_menu():
                     print(f"  ID         : {account['account_id']}")
                     print(f"  Name       : {account['name']}")
                     print(f"  Industry   : {account['industry'] or 'N/A'}")
+                    print(f"  Description: {account['description'] or 'N/A'}")
+                    print(f"  Website    : {account['website'] or 'N/A'}")
+                    print(f"  Address    : {account['street'] or 'N/A'}")
+                    print(f"  City       : {account['city'] or 'N/A'}")
+                    print(f"  State      : {account['state'] or 'N/A'}")
+                    print(f"  Zip        : {account['zip'] or 'N/A'}")
+                    print(f"  Country    : {account['country'] or 'N/A'}")
                     print(f"  Created At : {convert_utc_to_local_display(account['created_at'])}")
+                    
                     # Display linked contacts
                     contacts = get_contacts_by_account(account['account_id'])
                     if contacts:
@@ -509,15 +644,53 @@ def handle_accounts_menu():
                     print(f"Account with ID {account_id} not found.")
                     continue
 
-                print(f"Current Account Details: ID: {account['account_id']}, Name: {account['name']}, Industry: {account['industry']}")
+                print(f"\nCurrent Account Details:")
+                print(f"  ID: {account['account_id']}")
+                print(f"  Name: {account['name']}")
+                print(f"  Industry: {account['industry'] or 'N/A'}")
+                print(f"  Description: {account['description'] or 'N/A'}")
+                print(f"  Website: {account['website'] or 'N/A'}")
+                print(f"  Street: {account['street'] or 'N/A'}")
+                print(f"  City: {account['city'] or 'N/A'}")
+                print(f"  State: {account['state'] or 'N/A'}")
+                print(f"  Zip: {account['zip'] or 'N/A'}")
+                print(f"  Country: {account['country'] or 'N/A'}")
+                
                 new_name = input(f"Enter new name (leave blank to keep '{account['name']}'): ").strip() or None
-                new_industry = input(f"Enter new industry (leave blank to keep '{account['industry']}'): ").strip() or None
+                new_industry = input(f"Enter new industry (leave blank to keep '{account['industry'] or 'N/A'}'): ").strip() or None
+                
+                # Handle multi-line description
+                print(f"Current description: {account['description'] or 'N/A'}")
+                new_description = get_multiline_input(f"Enter new description (leave blank to keep current)")
+                if new_description == 'back':
+                    continue
+                
+                new_website = input(f"Enter new website (leave blank to keep '{account['website'] or 'N/A'}'): ").strip() or None
+                new_street = input(f"Enter new street (leave blank to keep '{account['street'] or 'N/A'}'): ").strip() or None
+                new_city = input(f"Enter new city (leave blank to keep '{account['city'] or 'N/A'}'): ").strip() or None
+                new_state = input(f"Enter new state (leave blank to keep '{account['state'] or 'N/A'}'): ").strip() or None
+                new_zip = input(f"Enter new zip (leave blank to keep '{account['zip'] or 'N/A'}'): ").strip() or None
+                new_country = input(f"Enter new country (leave blank to keep '{account['country'] or 'N/A'}'): ").strip() or None
 
                 update_params = {}
                 if new_name is not None:
                     update_params['name'] = new_name
                 if new_industry is not None:
                     update_params['industry'] = new_industry
+                if new_description is not None:
+                    update_params['description'] = new_description
+                if new_website is not None:
+                    update_params['website'] = new_website
+                if new_street is not None:
+                    update_params['street'] = new_street
+                if new_city is not None:
+                    update_params['city'] = new_city
+                if new_state is not None:
+                    update_params['state'] = new_state
+                if new_zip is not None:
+                    update_params['zip'] = new_zip
+                if new_country is not None:
+                    update_params['country'] = new_country
 
                 if not update_params:
                     print("No update parameters provided.")
@@ -563,8 +736,20 @@ def handle_contacts_menu():
             if choice == '1': # Create Contact
                 first_name = input("Enter contact first name (required): ").strip()
                 last_name = input("Enter contact last name (required): ").strip()
+                title = input("Enter contact title (optional): ").strip() or None
                 email = input("Enter contact email (required, must be unique): ").strip()
                 phone = input("Enter contact phone (optional): ").strip() or None
+                description = get_multiline_input("Enter contact description (optional):")
+                if description == 'back':
+                    continue
+                website = input("Enter contact website (optional): ").strip() or None
+                
+                # Address information
+                street = input("Enter street address (optional): ").strip() or None
+                city = input("Enter city (optional): ").strip() or None
+                state = input("Enter state/province (optional): ").strip() or None
+                zip_code = input("Enter zip/postal code (optional): ").strip() or None
+                country = input("Enter country (optional): ").strip() or None
 
                 if not first_name or not last_name or not email:
                      print("First name, last name, and email are required.")
@@ -576,7 +761,8 @@ def handle_contacts_menu():
                 account_id = select_account_by_search("Enter associated Account Name or ID (optional, leave blank for none, or 'back'): ")
                 if account_id == 'back': continue # Go back if user entered 'back' during account selection
 
-                contact_id = create_contact(first_name, last_name, email, phone, account_id)
+                contact_id = create_contact(first_name, last_name, email, phone, account_id, title, description, 
+                                          website, street, city, state, zip_code, country)
                 if contact_id:
                     print(f"SUCCESS: Contact '{first_name} {last_name}' created with ID: {contact_id}")
                 else:
@@ -589,15 +775,21 @@ def handle_contacts_menu():
                     padding = 2
                     # Determine dynamic column widths
                     min_name_width = len("Name (ID)")
+                    min_title_width = len("Title")
+                    min_description_width = len("Description")
                     min_account_width = len("Account Name (ID)")
                     min_email_width = len("Email")
                     min_phone_width = len("Phone")
+                    min_location_width = len("Location")
                     min_created_at_width = len("Created At")
 
                     max_name_len = min_name_width
+                    max_title_len = min_title_width
+                    max_description_len = min_description_width
                     max_account_len = min_account_width
                     max_email_len = min_email_width
                     max_phone_len = min_phone_width
+                    max_location_len = min_location_width
                     # Created At is often fixed, but we can calculate it too for consistency
                     max_created_at_len = min_created_at_width
 
@@ -612,6 +804,10 @@ def handle_contacts_menu():
 
                         phone_display = contact_item['phone'] or 'N/A'
                         max_phone_len = max(max_phone_len, len(phone_display))
+                        
+                        # Truncate description for display
+                        description_display = truncate_text(contact_item['description'] or 'N/A')
+                        max_description_len = max(max_description_len, len(description_display))
 
                         account_display = "N/A"
                         if contact_item['account_id']:
@@ -625,25 +821,49 @@ def handle_contacts_menu():
                         created_at_display = convert_utc_to_local_display(contact_item['created_at'])
                         max_created_at_len = max(max_created_at_len, len(str(created_at_display)))
 
+                        # Format title
+                        title_display = contact_item['title'] or 'N/A'
+                        max_title_len = max(max_title_len, len(title_display))
+                        
+                        # Format location as city, state, country
+                        location_parts = []
+                        if contact_item['city']:
+                            location_parts.append(contact_item['city'])
+                        if contact_item['state']:
+                            location_parts.append(contact_item['state'])
+                        if contact_item['country']:
+                            location_parts.append(contact_item['country'])
+                        location_display = ", ".join(location_parts) if location_parts else "N/A"
+                        max_location_len = max(max_location_len, len(location_display))
+                        
                         contact_display_data.append({
                             'name_with_id': name_with_id,
+                            'title': title_display,
+                            'description': description_display,
                             'email': email_display,
                             'phone': phone_display,
                             'account': account_display,
+                            'location': location_display,
                             'created_at': created_at_display
                         })
 
                     name_col_width = max_name_len + padding
+                    title_col_width = max_title_len + padding
+                    description_col_width = max_description_len + padding
                     account_col_width = max_account_len + padding
                     email_col_width = max(min_email_width, max_email_len) + padding
                     phone_col_width = max(min_phone_width, max_phone_len) + padding
+                    location_col_width = max_location_len + padding
                     created_at_col_width = max(min_created_at_width, max_created_at_len) + padding
 
                     header_parts = [
                         f"{'Name (ID)':<{name_col_width}}",
+                        f"{'Title':<{title_col_width}}",
+                        f"{'Description':<{description_col_width}}",
                         f"{'Email':<{email_col_width}}",
                         f"{'Phone':<{phone_col_width}}",
                         f"{'Account Name (ID)':<{account_col_width}}",
+                        f"{'Location':<{location_col_width}}",
                         f"{'Created At':<{created_at_col_width}}"
                     ]
                     header = " | ".join(header_parts)
@@ -653,9 +873,12 @@ def handle_contacts_menu():
                     for data in contact_display_data:
                         row_parts = [
                             f"{data['name_with_id']:<{name_col_width}}",
+                            f"{data['title']:<{title_col_width}}",
+                            f"{data['description']:<{description_col_width}}",
                             f"{data['email']:<{email_col_width}}",
                             f"{data['phone']:<{phone_col_width}}",
                             f"{data['account']:<{account_col_width}}",
+                            f"{data['location']:<{location_col_width}}",
                             f"{data['created_at']:<{created_at_col_width}}"
                         ]
                         print(" | ".join(row_parts))
@@ -677,8 +900,16 @@ def handle_contacts_menu():
                     print(f"  ID           : {contact_details['contact_id']}")
                     print(f"  First Name   : {contact_details['first_name']}")
                     print(f"  Last Name    : {contact_details['last_name']}")
+                    print(f"  Title        : {contact_details['title'] or 'N/A'}")
                     print(f"  Email        : {contact_details['email']}")
                     print(f"  Phone        : {contact_details['phone'] or 'N/A'}")
+                    print(f"  Description  : {contact_details['description'] or 'N/A'}")
+                    print(f"  Website      : {contact_details['website'] or 'N/A'}")
+                    print(f"  Street       : {contact_details['street'] or 'N/A'}")
+                    print(f"  City         : {contact_details['city'] or 'N/A'}")
+                    print(f"  State        : {contact_details['state'] or 'N/A'}")
+                    print(f"  Zip          : {contact_details['zip'] or 'N/A'}")
+                    print(f"  Country      : {contact_details['country'] or 'N/A'}")
                     
                     account_display_details = "N/A"
                     if contact_details['account_id']:
@@ -707,11 +938,40 @@ def handle_contacts_menu():
                     print(f"Contact with ID {contact_id} not found.")
                     continue
 
-                print(f"Current Contact Details: ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}, Phone: {contact['phone']}, Account ID: {contact['account_id']}")
+                print(f"\nCurrent Contact Details:")
+                print(f"  ID: {contact['contact_id']}")
+                print(f"  First Name: {contact['first_name']}")
+                print(f"  Last Name: {contact['last_name']}")
+                print(f"  Title: {contact['title'] or 'N/A'}")
+                print(f"  Email: {contact['email']}")
+                print(f"  Phone: {contact['phone'] or 'N/A'}")
+                print(f"  Description: {contact['description'] or 'N/A'}")
+                print(f"  Website: {contact['website'] or 'N/A'}")
+                print(f"  Street: {contact['street'] or 'N/A'}")
+                print(f"  City: {contact['city'] or 'N/A'}")
+                print(f"  State: {contact['state'] or 'N/A'}")
+                print(f"  Zip: {contact['zip'] or 'N/A'}")
+                print(f"  Country: {contact['country'] or 'N/A'}")
+                print(f"  Account ID: {contact['account_id'] or 'None'}")
+                
                 new_first_name = input(f"Enter new first name (leave blank to keep '{contact['first_name']}'): ").strip() or None
                 new_last_name = input(f"Enter new last name (leave blank to keep '{contact['last_name']}'): ").strip() or None
+                new_title = input(f"Enter new title (leave blank to keep '{contact['title'] or 'N/A'}'): ").strip() or None
                 new_email = input(f"Enter new email (leave blank to keep '{contact['email']}'): ").strip() or None
-                new_phone = input(f"Enter new phone (leave blank to keep '{contact['phone']}'): ").strip() or None
+                new_phone = input(f"Enter new phone (leave blank to keep '{contact['phone'] or 'N/A'}'): ").strip() or None
+                
+                # Handle multi-line description
+                print(f"Current description: {contact['description'] or 'N/A'}")
+                new_description = get_multiline_input(f"Enter new description (leave blank to keep current)")
+                if new_description == 'back':
+                    continue
+                    
+                new_website = input(f"Enter new website (leave blank to keep '{contact['website'] or 'N/A'}'): ").strip() or None
+                new_street = input(f"Enter new street (leave blank to keep '{contact['street'] or 'N/A'}'): ").strip() or None
+                new_city = input(f"Enter new city (leave blank to keep '{contact['city'] or 'N/A'}'): ").strip() or None
+                new_state = input(f"Enter new state (leave blank to keep '{contact['state'] or 'N/A'}'): ").strip() or None
+                new_zip = input(f"Enter new zip (leave blank to keep '{contact['zip'] or 'N/A'}'): ").strip() or None
+                new_country = input(f"Enter new country (leave blank to keep '{contact['country'] or 'N/A'}'): ").strip() or None
 
                 # Use the new select_account_by_search helper for updating account link
                 print("\n--- Update Account Link ---")
@@ -741,10 +1001,26 @@ def handle_contacts_menu():
                     update_params['first_name'] = new_first_name
                 if new_last_name is not None:
                     update_params['last_name'] = new_last_name
+                if new_title is not None:
+                    update_params['title'] = new_title
                 if new_email is not None:
                     update_params['email'] = new_email
                 if new_phone is not None:
                     update_params['phone'] = new_phone
+                if new_description is not None:
+                    update_params['description'] = new_description
+                if new_website is not None:
+                    update_params['website'] = new_website
+                if new_street is not None:
+                    update_params['street'] = new_street
+                if new_city is not None:
+                    update_params['city'] = new_city
+                if new_state is not None:
+                    update_params['state'] = new_state
+                if new_zip is not None:
+                    update_params['zip'] = new_zip
+                if new_country is not None:
+                    update_params['country'] = new_country
 
                 # Only update account_id if the user provided input during the selection process
                 # (i.e., new_account_id_selection was not None and not 'back')
@@ -795,7 +1071,9 @@ def handle_opportunities_menu():
 
             if choice == '1': # Create Opportunity
                 name = input("Enter opportunity name (required): ").strip()
-                description = input("Enter description (optional): ").strip() or None
+                description = get_multiline_input("Enter description (optional):")
+                if description == 'back':
+                    continue
 
                 amount_input = get_float_input("Enter amount (optional, leave blank for none, or 'back'): ")
                 if amount_input == 'back': continue
@@ -856,6 +1134,7 @@ def handle_opportunities_menu():
                     # Headers
                     id_header = "ID"
                     name_header = "Name"
+                    description_header = "Description"
                     account_header = "Account"
                     contact_header = "Contact"
                     value_header = "Value"
@@ -864,6 +1143,7 @@ def handle_opportunities_menu():
                     # Initialize max lengths with header lengths
                     max_id_len = len(id_header)
                     max_name_len = len(name_header)
+                    max_description_len = len(description_header)
                     max_account_len = len(account_header)
                     max_contact_len = len(contact_header)
                     max_value_len = len(value_header)
@@ -875,6 +1155,9 @@ def handle_opportunities_menu():
                             # Direct access without checking 'in' since sqlite3.Row doesn't support it
                             opp_id_str = str(opp['opportunity_id'])
                             opp_name_str = opp['name'] if opp['name'] is not None else "N/A"
+                            
+                            # Truncate description for display
+                            description_display = truncate_text(opp['description'] or 'N/A')
                             
                             account_display = "N/A"
                             if opp['account_id'] is not None:
@@ -904,6 +1187,7 @@ def handle_opportunities_menu():
                         processed_opportunities.append({
                             'id': opp_id_str,
                             'name': opp_name_str,
+                            'description': description_display,
                             'account': account_display,
                             'contact': contact_display,
                             'value': value_str,
@@ -913,6 +1197,7 @@ def handle_opportunities_menu():
                         # Update max lengths based on data
                         max_id_len = max(max_id_len, len(opp_id_str))
                         max_name_len = max(max_name_len, len(opp_name_str))
+                        max_description_len = max(max_description_len, len(description_display))
                         max_account_len = max(max_account_len, len(account_display))
                         max_contact_len = max(max_contact_len, len(contact_display))
                         max_value_len = max(max_value_len, len(value_str))
@@ -921,20 +1206,21 @@ def handle_opportunities_menu():
                     # Add padding to max lengths to get column widths
                     id_col_width = max_id_len + padding
                     name_col_width = max_name_len + padding
+                    description_col_width = max_description_len + padding
                     account_col_width = max_account_len + padding
                     contact_col_width = max_contact_len + padding
                     value_col_width = max_value_len + padding
                     created_at_col_width = max_created_at_len + padding # New column width
 
                     # Construct header string and print
-                    header_format = f"{{:<{id_col_width}}} | {{:<{name_col_width}}} | {{:<{account_col_width}}} | {{:<{contact_col_width}}} | {{:<{value_col_width}}} | {{:<{created_at_col_width}}}"
-                    header_line = header_format.format(id_header, name_header, account_header, contact_header, value_header, created_at_header)
+                    header_format = f"{{:<{id_col_width}}} | {{:<{name_col_width}}} | {{:<{description_col_width}}} | {{:<{account_col_width}}} | {{:<{contact_col_width}}} | {{:<{value_col_width}}} | {{:<{created_at_col_width}}}"
+                    header_line = header_format.format(id_header, name_header, description_header, account_header, contact_header, value_header, created_at_header)
                     print(header_line)
                     print("-" * len(header_line))
 
                     # Print data rows
                     for popp in processed_opportunities:
-                        print(header_format.format(popp['id'], popp['name'], popp['account'], popp['contact'], popp['value'], popp['created_at']))
+                        print(header_format.format(popp['id'], popp['name'], popp['description'], popp['account'], popp['contact'], popp['value'], popp['created_at']))
                     print("-" * len(header_line))
                 else:
                     print("No opportunities found.")
@@ -994,7 +1280,12 @@ def handle_opportunities_menu():
                 print(f"Current Opportunity Details: ID: {opportunity['opportunity_id']}, Name: {opportunity['name']}, Amount: {opportunity['amount']}, Close Date: {opportunity['close_date']}, Account ID: {opportunity['account_id']}, Contact ID: {opportunity['contact_id']}")
 
                 new_name = input(f"Enter new name (leave blank to keep '{opportunity['name']}'): ").strip() or None
-                new_description = input(f"Enter new description (leave blank to keep '{opportunity['description']}'): ").strip() or None
+                
+                # Handle multi-line description
+                print(f"Current description: {opportunity['description'] or 'N/A'}")
+                new_description = get_multiline_input(f"Enter new description (leave blank to keep current)")
+                if new_description == 'back':
+                    continue
 
                 new_amount_input_str = input("Enter new amount (leave blank to keep '{}', or 'back'): ".format(opportunity['amount'] or 'None')).strip()
                 if new_amount_input_str.lower() == 'back': continue
@@ -1129,7 +1420,8 @@ def export_contacts_to_csv():
     
     try:
         with open(filename, 'w', newline='') as csvfile:
-            fieldnames = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Account Name']
+            fieldnames = ['ID', 'First Name', 'Last Name', 'Title', 'Email', 'Phone', 
+                      'Description', 'Website', 'Street', 'City', 'State', 'Zip', 'Country', 'Account Name']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             
             writer.writeheader()
@@ -1145,8 +1437,16 @@ def export_contacts_to_csv():
                     'ID': contact['contact_id'],
                     'First Name': contact['first_name'],
                     'Last Name': contact['last_name'],
+                    'Title': contact['title'] or 'N/A',
                     'Email': contact['email'] or 'N/A',
                     'Phone': contact['phone'] or 'N/A',
+                    'Description': contact['description'] or 'N/A',
+                    'Website': contact['website'] or 'N/A',
+                    'Street': contact['street'] or 'N/A',
+                    'City': contact['city'] or 'N/A',
+                    'State': contact['state'] or 'N/A',
+                    'Zip': contact['zip'] or 'N/A',
+                    'Country': contact['country'] or 'N/A',
                     'Account Name': account_name
                 })
         
@@ -1231,8 +1531,8 @@ def main():
     Main function for the CRM CLI application.
     Displays menus and handles user interaction.
     """
-    # Ensure database tables exist
-    create_tables()
+    # Ensure database tables exist and are properly migrated
+    initialize_database()
 
     print("Welcome to the Simple CRM CLI Application!")
 
