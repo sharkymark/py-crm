@@ -1,4 +1,6 @@
 import sys
+import csv
+import os
 from datetime import datetime, timezone # Added timezone
 # Update imports to use relative paths within the src directory
 from .database import create_tables
@@ -35,7 +37,8 @@ def display_main_menu():
     print("2. Manage Contacts")
     print("3. Manage Opportunities")
     print("4. Summary")
-    print("5. Exit")
+    print("5. Export")
+    print("6. Exit")
     print("----------------------------")
 
 def display_accounts_menu():
@@ -70,6 +73,14 @@ def display_opportunities_menu():
     print("5. Delete Opportunity")
     print("6. Back to Main Menu")
     print("--------------------------")
+
+def display_export_menu():
+    """Displays the export menu options."""
+    print("\n--- Export Options ---")
+    print("1. Export Contacts")
+    print("2. Export Opportunities")
+    print("3. Back to Main Menu")
+    print("--------------------")
 
 def graceful_exit():
     """Prints the exit message and exits the program."""
@@ -1102,6 +1113,119 @@ def handle_opportunities_menu():
             graceful_exit()
 
 
+def export_contacts_to_csv():
+    """Export contacts with account names to a CSV file."""
+    contacts = list_contacts()
+    
+    if not contacts:
+        print("No contacts to export.")
+        return
+    
+    # Create data directory if it doesn't exist
+    os.makedirs('data', exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"data/contacts_export_{timestamp}.csv"
+    
+    try:
+        with open(filename, 'w', newline='') as csvfile:
+            fieldnames = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Account Name']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            
+            writer.writeheader()
+            for contact in contacts:
+                # Get account name if account_id is available
+                account_name = "N/A"
+                if contact['account_id']:
+                    account = get_account(contact['account_id'])
+                    if account:
+                        account_name = account['name']
+                
+                writer.writerow({
+                    'ID': contact['contact_id'],
+                    'First Name': contact['first_name'],
+                    'Last Name': contact['last_name'],
+                    'Email': contact['email'] or 'N/A',
+                    'Phone': contact['phone'] or 'N/A',
+                    'Account Name': account_name
+                })
+        
+        print(f"SUCCESS: Contacts exported to {filename}")
+    except Exception as e:
+        print(f"ERROR: Failed to export contacts: {e}")
+
+def export_opportunities_to_csv():
+    """Export opportunities with account names and contact details to a CSV file."""
+    opportunities = list_opportunities()
+    
+    if not opportunities:
+        print("No opportunities to export.")
+        return
+    
+    # Create data directory if it doesn't exist
+    os.makedirs('data', exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"data/opportunities_export_{timestamp}.csv"
+    
+    try:
+        with open(filename, 'w', newline='') as csvfile:
+            fieldnames = ['ID', 'Name', 'Description', 'Amount', 'Close Date', 'Account Name', 'Contact Name', 'Contact Email', 'Created At']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            
+            writer.writeheader()
+            for opp in opportunities:
+                # Get account name if account_id is available
+                account_name = "N/A"
+                if opp['account_id']:
+                    account = get_account(opp['account_id'])
+                    if account:
+                        account_name = account['name']
+                
+                # Get contact details if contact_id is available
+                contact_name = "N/A"
+                contact_email = "N/A"
+                if opp['contact_id']:
+                    contact = get_contact(opp['contact_id'])
+                    if contact:
+                        contact_name = f"{contact['first_name']} {contact['last_name']}"
+                        contact_email = contact['email'] or "N/A"
+                
+                writer.writerow({
+                    'ID': opp['opportunity_id'],
+                    'Name': opp['name'],
+                    'Description': opp['description'] or 'N/A',
+                    'Amount': opp['amount'] or 'N/A',
+                    'Close Date': opp['close_date'] or 'N/A',
+                    'Account Name': account_name,
+                    'Contact Name': contact_name,
+                    'Contact Email': contact_email,
+                    'Created At': convert_utc_to_local_display(opp['created_at'])
+                })
+        
+        print(f"SUCCESS: Opportunities exported to {filename}")
+    except Exception as e:
+        print(f"ERROR: Failed to export opportunities: {e}")
+
+def handle_export_menu():
+    """Handles the export menu options."""
+    while True:
+        try:
+            display_export_menu()
+            choice = input("Enter your choice: ").strip()
+            
+            if choice == '1':  # Export Contacts
+                export_contacts_to_csv()
+            elif choice == '2':  # Export Opportunities
+                export_opportunities_to_csv()
+            elif choice == '3':  # Back to Main Menu
+                break
+            else:
+                print("Invalid choice. Please try again.")
+        except (KeyboardInterrupt, EOFError):
+            graceful_exit()
+
+
 def main():
     """
     Main function for the CRM CLI application.
@@ -1125,7 +1249,9 @@ def main():
                 handle_opportunities_menu()
             elif choice == '4': # Handle Summary
                 handle_summary_menu()
-            elif choice == '5': # Handle Exit
+            elif choice == '5': # Handle Export
+                handle_export_menu()
+            elif choice == '6': # Handle Exit
                 graceful_exit()
             else:
                 print("Invalid choice. Please try again.")
