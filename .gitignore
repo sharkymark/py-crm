@@ -1,16 +1,29 @@
-venv*
+# Python
 __pycache__/
-.ipynb_checkpoints/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 
-# Database file
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
+*.db3
 data/crm.db
 
-# Editor/IDE specific files
+# IDE / Editor
 .vscode/
 .idea/
+*.swp
+*~
 
 # Operating System files
 .DS_Store

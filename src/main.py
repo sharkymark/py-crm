@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime, timezone # Added timezone
 # Update imports to use relative paths within the src directory
 from .database import create_tables
 from .crm_dal import (
@@ -7,6 +8,25 @@ from .crm_dal import (
     create_opportunity, get_opportunity, list_opportunities, update_opportunity, delete_opportunity, search_opportunities,
     get_contacts_by_account, get_opportunities_by_account
 )
+
+def convert_utc_to_local_display(utc_dt_str):
+    """Converts a UTC datetime string to a local datetime string for display."""
+    if not utc_dt_str:
+        return "N/A"
+    try:
+        # Try parsing with microseconds
+        dt_utc = datetime.strptime(utc_dt_str, "%Y-%m-%d %H:%M:%S.%f")
+    except ValueError:
+        try:
+            # Try parsing without microseconds
+            dt_utc = datetime.strptime(utc_dt_str, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            # If parsing fails, return the original string
+            return utc_dt_str
+
+    dt_utc = dt_utc.replace(tzinfo=timezone.utc)
+    dt_local = dt_utc.astimezone() # Converts to local timezone
+    return dt_local.strftime("%Y-%m-%d %H:%M:%S")
 
 def display_main_menu():
     """Displays the main menu options."""
@@ -268,91 +288,105 @@ def handle_summary_menu():
     """Handles the summary menu option."""
     print("\n--- CRM Summary ---")
     try:
-        # Updated prompt to inform user about empty input
         search_term = input("Enter search term for Accounts, Contacts, or Opportunities (leave blank for all, or 'back'): ").strip()
         if search_term.lower() == 'back':
             return
 
-        # If search term is empty, list all; otherwise, search
         if not search_term:
-            print("Displaying all records...")
+            print("Displaying all entries.")
             matching_accounts = list_accounts()
             matching_contacts = list_contacts()
             matching_opportunities = list_opportunities()
         else:
+            print(f"Searching for: '{search_term}'")
             matching_accounts = search_accounts(search_term)
             matching_contacts = search_contacts(search_term)
             matching_opportunities = search_opportunities(search_term)
 
         displayed_contact_ids = set()
         displayed_opportunity_ids = set()
+        summary_width = 80  # Define a width for separators
+        item_separator = "  " + "-" * (summary_width - 2)
 
-        print("\n--- Accounts ---")
+        print("\n--- Accounts Summary ---")
         if matching_accounts:
-            for account in matching_accounts:
-                print(f"Account ID: {account['account_id']}, Name: {account['name']}, Industry: {account['industry']}")
-
-                # Display Contacts linked to this Account
-                contacts_for_account = get_contacts_by_account(account['account_id'])
+            for acc in matching_accounts:
+                print(f"  Account: {acc['name']} (ID: {acc['account_id']}) - Industry: {acc['industry'] or 'N/A'}")
+                
+                contacts_for_account = get_contacts_by_account(acc['account_id'])
                 if contacts_for_account:
-                    print("  Contacts:")
+                    print("    Linked Contacts:")
                     for contact in contacts_for_account:
-                        print(f"    ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}")
+                        print(f"      - {contact['first_name']} {contact['last_name']} (ID: {contact['contact_id']}) - Email: {contact['email']}")
                         displayed_contact_ids.add(contact['contact_id'])
-
-                # Display Opportunities linked to this Account
-                opportunities_for_account = get_opportunities_by_account(account['account_id'])
+                
+                opportunities_for_account = get_opportunities_by_account(acc['account_id'])
                 if opportunities_for_account:
-                    print("  Opportunities:")
+                    print("    Linked Opportunities:")
                     for opp in opportunities_for_account:
-                        print(f"    ID: {opp['opportunity_id']}, Name: {opp['name']}, Amount: {opp['amount']}, Close Date: {opp['close_date']}")
+                        print(f"      - {opp['name']} (ID: {opp['opportunity_id']}) - Amount: {opp['amount'] or 'N/A'}, Close Date: {opp['close_date'] or 'N/A'}")
                         displayed_opportunity_ids.add(opp['opportunity_id'])
-
-                        # Display Contact linked to this Opportunity (if any)
-                        if opp['contact_id']:
-                            contact_for_opp = get_contact(opp['contact_id'])
-                            if contact_for_opp:
-                                print(f"      Contact: ID: {contact_for_opp['contact_id']}, Name: {contact_for_opp['first_name']} {contact_for_opp['last_name']}")
-                                displayed_contact_ids.add(contact_for_opp['contact_id'])
+                print(item_separator)
         else:
-            print("No matching accounts found." if search_term else "No accounts found.")
+            print("  No matching accounts found." if search_term else "  No accounts found.")
 
-        print("\n--- Standalone Contacts ---")
-        standalone_contacts_found = False
+        print("\n--- Standalone Contacts Summary ---")
+        standalone_contacts_found_in_summary = False
         if matching_contacts:
             for contact in matching_contacts:
                 if contact['contact_id'] not in displayed_contact_ids:
-                    print(f"Contact ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}, Account ID: {contact['account_id']}")
-                    standalone_contacts_found = True
-                    displayed_contact_ids.add(contact['contact_id']) # Add just in case
+                    if not standalone_contacts_found_in_summary:
+                        standalone_contacts_found_in_summary = True
+                    print(f"  Contact: {contact['first_name']} {contact['last_name']} (ID: {contact['contact_id']})")
+                    print(f"    Email: {contact['email']}, Phone: {contact['phone'] or 'N/A'}")
+                    account_info = "N/A"
+                    if contact['account_id']:
+                        acc = get_account(contact['account_id'])
+                        account_info = f"{acc['name']} (ID: {contact['account_id']})" if acc else f"ID: {contact['account_id']} (Account not found)"
+                    print(f"    Linked to Account: {account_info}")
+                    # No direct display of opportunities linked only to contact in this summary view to keep it cleaner
+                    # User can get contact details for that.
+                    print(item_separator)
 
-        if not standalone_contacts_found:
-             print("No standalone matching contacts found." if search_term else "No standalone contacts found.")
+        if not standalone_contacts_found_in_summary:
+             print("  No additional standalone contacts found." if search_term else "  No standalone contacts found.")
 
-
-        print("\n--- Standalone Opportunities ---")
-        standalone_opportunities_found = False
+        print("\n--- Standalone Opportunities Summary ---")
+        standalone_opportunities_found_in_summary = False
         if matching_opportunities:
             for opp in matching_opportunities:
                 if opp['opportunity_id'] not in displayed_opportunity_ids:
-                    print(f"Opportunity ID: {opp['opportunity_id']}, Name: {opp['name']}, Amount: {opp['amount']}, Close Date: {opp['close_date']}, Account ID: {opp['account_id']}")
-                    standalone_opportunities_found = True
-                    displayed_opportunity_ids.add(opp['opportunity_id']) # Add just in case
+                    if not standalone_opportunities_found_in_summary:
+                        standalone_opportunities_found_in_summary = True
+                    print(f"  Opportunity: {opp['name']} (ID: {opp['opportunity_id']})")
+                    print(f"    Description: {opp['description'] or 'N/A'}")
+                    print(f"    Amount: {opp['amount'] or 'N/A'}, Close Date: {opp['close_date'] or 'N/A'}")
+                    
+                    account_info = "N/A"
+                    if opp['account_id']:
+                        acc = get_account(opp['account_id'])
+                        account_info = f"{acc['name']} (ID: {opp['account_id']})" if acc else f"ID: {opp['account_id']} (Account not found)"
+                    print(f"    Linked to Account: {account_info}")
 
-                    # Display Contact linked to this Standalone Opportunity (if any)
+                    contact_info = "N/A"
                     if opp['contact_id']:
-                        contact_for_opp = get_contact(opp['contact_id'])
-                        if contact_for_opp:
-                            print(f"  Contact: ID: {contact_for_opp['contact_id']}, Name: {contact_for_opp['first_name']} {contact_for_opp['last_name']}")
-                            displayed_contact_ids.add(contact_for_opp['contact_id']) # Add just in case
+                        contact = get_contact(opp['contact_id'])
+                        contact_info = f"{contact['first_name']} {contact['last_name']} (ID: {opp['contact_id']})" if contact else f"ID: {opp['contact_id']} (Contact not found)"
+                    print(f"    Linked to Contact: {contact_info}")
+                    print(item_separator)
 
-        if not standalone_opportunities_found:
-            print("No standalone matching opportunities found." if search_term else "No standalone opportunities found.")
+        if not standalone_opportunities_found_in_summary:
+            print("  No additional standalone opportunities found." if search_term else "  No standalone opportunities found.")
 
         print("\n--- End Summary ---")
+        print("=" * summary_width)
 
     except (KeyboardInterrupt, EOFError):
         graceful_exit()
+    except Exception as e:
+        print(f"An unexpected error occurred during summary generation: {e}")
+        # Consider logging e to a file or more detailed error handling
+        # graceful_exit() # Or allow returning to menu
 
 
 # --- Menu Handlers ---
@@ -371,17 +405,46 @@ def handle_accounts_menu():
                 industry = input("Enter account industry (optional): ").strip() or None
                 account_id = create_account(name, industry)
                 if account_id:
-                    print(f"Account '{name}' created successfully with ID: {account_id}")
+                    print(f"SUCCESS: Account '{name}' created with ID: {account_id}")
                 else:
-                    print(f"Failed to create account '{name}'.")
+                    print(f"FAILED: Could not create account '{name}'.")
 
             elif choice == '2': # List Accounts
                 accounts = list_accounts()
                 if accounts:
-                    print("\n--- Accounts ---")
+                    print("\n--- All Accounts ---")
+                    padding = 2
+                    # Determine dynamic column widths
+                    min_id_width = len("ID") + padding
+                    min_name_width = len("Name") + padding
+                    min_industry_width = len("Industry") + padding
+                    min_created_at_width = len("Created At") + padding
+
+                    max_id_len = min_id_width
+                    max_name_len = min_name_width
+                    max_industry_len = min_industry_width
+                    # Created At is fixed width for now, can be dynamic if needed
+                    # max_created_at_len = min_created_at_width
+
                     for account in accounts:
-                        print(f"ID: {account['account_id']}, Name: {account['name']}, Industry: {account['industry']}, Created: {account['created_at']}")
-                    print("----------------")
+                        max_id_len = max(max_id_len, len(str(account['account_id'])) + padding)
+                        max_name_len = max(max_name_len, len(account['name']) + padding)
+                        max_industry_len = max(max_industry_len, len(account['industry'] or 'N/A') + padding)
+                        # max_created_at_len = max(max_created_at_len, len(account['created_at']) + padding)
+
+                    id_col_width = max_id_len
+                    name_col_width = max_name_len
+                    industry_col_width = max_industry_len
+                    created_at_col_width = 20 # Keep fixed or use max_created_at_len
+
+                    header = f"{'ID':<{id_col_width}} | {'Name':<{name_col_width}} | {'Industry':<{industry_col_width}} | {'Created At':<{created_at_col_width}}"
+                    print(header)
+                    print("-" * len(header))
+                    for account in accounts:
+                        industry_display = account['industry'] or 'N/A'
+                        created_at_display = convert_utc_to_local_display(account['created_at'])
+                        print(f"{str(account['account_id']):<{id_col_width}} | {account['name']:<{name_col_width}} | {industry_display:<{industry_col_width}} | {created_at_display:<{created_at_col_width}}")
+                    print("-" * len(header))
                 else:
                     print("No accounts found.")
 
@@ -396,15 +459,30 @@ def handle_accounts_menu():
                 account = get_account(account_id_selection)
                 if account:
                     print("\n--- Account Details ---")
-                    print(f"ID: {account['account_id']}")
-                    print(f"Name: {account['name']}")
-                    print(f"Industry: {account['industry']}")
-                    print(f"Created: {account['created_at']}")
+                    print(f"  ID         : {account['account_id']}")
+                    print(f"  Name       : {account['name']}")
+                    print(f"  Industry   : {account['industry'] or 'N/A'}")
+                    print(f"  Created At : {convert_utc_to_local_display(account['created_at'])}")
+                    # Display linked contacts
+                    contacts = get_contacts_by_account(account['account_id'])
+                    if contacts:
+                        print("  Linked Contacts:")
+                        for contact in contacts:
+                            print(f"    - ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}")
+                    else:
+                        print("  Linked Contacts: None")
+                    # Display linked opportunities
+                    opportunities = get_opportunities_by_account(account['account_id'])
+                    if opportunities:
+                        print("  Linked Opportunities:")
+                        for opp in opportunities:
+                            print(f"    - ID: {opp['opportunity_id']}, Name: {opp['name']}, Amount: {opp['amount'] or 'N/A'}")
+                    else:
+                        print("  Linked Opportunities: None")
                     print("-----------------------")
                 else:
                     # This case should ideally not be reached if select_account_by_search returns a valid ID
                     print(f"Account with ID {account_id_selection} not found.")
-
 
             elif choice == '4': # Update Account (by search/ID)
                 print("\n--- Update Account ---")
@@ -436,9 +514,9 @@ def handle_accounts_menu():
 
                 success = update_account(account_id, **update_params)
                 if success:
-                    print(f"Account with ID {account_id} updated successfully.")
+                    print(f"SUCCESS: Account with ID {account_id} updated.")
                 else:
-                    print(f"Failed to update account with ID {account_id}.") # DAL prints specific error
+                    print(f"FAILED: Could not update account with ID {account_id}.") # DAL prints specific error
 
             elif choice == '5': # Delete Account (by search/ID)
                 print("\n--- Delete Account ---")
@@ -451,9 +529,9 @@ def handle_accounts_menu():
 
                 success = delete_account(account_id)
                 if success:
-                    print(f"Account with ID {account_id} deleted successfully.")
+                    print(f"SUCCESS: Account with ID {account_id} deleted.")
                 else:
-                    print(f"Failed to delete account with ID {account_id}. It might not exist.")
+                    print(f"FAILED: Could not delete account with ID {account_id}. It might not exist or have linked records.")
 
             elif choice == '6': # Back
                 break
@@ -489,17 +567,88 @@ def handle_contacts_menu():
 
                 contact_id = create_contact(first_name, last_name, email, phone, account_id)
                 if contact_id:
-                    print(f"Contact '{first_name} {last_name}' created successfully with ID: {contact_id}")
+                    print(f"SUCCESS: Contact '{first_name} {last_name}' created with ID: {contact_id}")
                 else:
-                    print(f"Failed to create contact '{first_name} {last_name}'. Ensure email is unique and account ID is valid.")
+                    print(f"FAILED: Could not create contact '{first_name} {last_name}'. Ensure email is unique and account ID is valid.")
 
             elif choice == '2': # List Contacts
                 contacts = list_contacts()
                 if contacts:
-                    print("\n--- Contacts ---")
-                    for contact in contacts:
-                        print(f"ID: {contact['contact_id']}, Name: {contact['first_name']} {contact['last_name']}, Email: {contact['email']}, Phone: {contact['phone']}, Account ID: {contact['account_id']}, Created: {contact['created_at']}")
-                    print("----------------")
+                    print("\n--- All Contacts ---")
+                    padding = 2
+                    # Determine dynamic column widths
+                    min_name_width = len("Name (ID)")
+                    min_account_width = len("Account Name (ID)")
+                    min_email_width = len("Email")
+                    min_phone_width = len("Phone")
+                    min_created_at_width = len("Created At")
+
+                    max_name_len = min_name_width
+                    max_account_len = min_account_width
+                    max_email_len = min_email_width
+                    max_phone_len = min_phone_width
+                    # Created At is often fixed, but we can calculate it too for consistency
+                    max_created_at_len = min_created_at_width
+
+
+                    contact_display_data = []
+                    for contact_item in contacts:
+                        name_with_id = f"{contact_item['first_name']} {contact_item['last_name']} ({contact_item['contact_id']})"
+                        max_name_len = max(max_name_len, len(name_with_id))
+
+                        email_display = contact_item['email'] or 'N/A'
+                        max_email_len = max(max_email_len, len(email_display))
+
+                        phone_display = contact_item['phone'] or 'N/A'
+                        max_phone_len = max(max_phone_len, len(phone_display))
+
+                        account_display = "N/A"
+                        if contact_item['account_id']:
+                            acc = get_account(contact_item['account_id'])
+                            if acc:
+                                account_display = f"{acc['name']} ({contact_item['account_id']})"
+                            else:
+                                account_display = f"Unknown Account ({contact_item['account_id']})"
+                        max_account_len = max(max_account_len, len(account_display))
+                        
+                        created_at_display = convert_utc_to_local_display(contact_item['created_at'])
+                        max_created_at_len = max(max_created_at_len, len(str(created_at_display)))
+
+                        contact_display_data.append({
+                            'name_with_id': name_with_id,
+                            'email': email_display,
+                            'phone': phone_display,
+                            'account': account_display,
+                            'created_at': created_at_display
+                        })
+
+                    name_col_width = max_name_len + padding
+                    account_col_width = max_account_len + padding
+                    email_col_width = max(min_email_width, max_email_len) + padding
+                    phone_col_width = max(min_phone_width, max_phone_len) + padding
+                    created_at_col_width = max(min_created_at_width, max_created_at_len) + padding
+
+                    header_parts = [
+                        f"{'Name (ID)':<{name_col_width}}",
+                        f"{'Email':<{email_col_width}}",
+                        f"{'Phone':<{phone_col_width}}",
+                        f"{'Account Name (ID)':<{account_col_width}}",
+                        f"{'Created At':<{created_at_col_width}}"
+                    ]
+                    header = " | ".join(header_parts)
+                    print(header)
+                    print("-" * len(header))
+
+                    for data in contact_display_data:
+                        row_parts = [
+                            f"{data['name_with_id']:<{name_col_width}}",
+                            f"{data['email']:<{email_col_width}}",
+                            f"{data['phone']:<{phone_col_width}}",
+                            f"{data['account']:<{account_col_width}}",
+                            f"{data['created_at']:<{created_at_col_width}}"
+                        ]
+                        print(" | ".join(row_parts))
+                    print("-" * len(header))
                 else:
                     print("No contacts found.")
 
@@ -511,18 +660,26 @@ def handle_contacts_menu():
                      print("Contact selection is required to get details.")
                      continue
 
-                contact = get_contact(contact_id_selection)
-                if contact:
+                contact_details = get_contact(contact_id_selection) # Renamed to avoid conflict
+                if contact_details:
                     print("\n--- Contact Details ---")
-                    print(f"ID: {contact['contact_id']}")
-                    print(f"Name: {contact['first_name']} {contact['last_name']}")
-                    print(f"Email: {contact['email']}")
-                    print(f"Phone: {contact['phone']}")
-                    print(f"Account ID: {contact['account_id']}")
-                    print(f"Created: {contact['created_at']}")
+                    print(f"  ID           : {contact_details['contact_id']}")
+                    print(f"  First Name   : {contact_details['first_name']}")
+                    print(f"  Last Name    : {contact_details['last_name']}")
+                    print(f"  Email        : {contact_details['email']}")
+                    print(f"  Phone        : {contact_details['phone'] or 'N/A'}")
+                    
+                    account_display_details = "N/A"
+                    if contact_details['account_id']:
+                        acc = get_account(contact_details['account_id'])
+                        if acc:
+                            account_display_details = f"{acc['name']} (ID: {acc['account_id']})"
+                        else:
+                            account_display_details = f"Unknown Account (ID: {contact_details['account_id']})"
+                    print(f"  Account      : {account_display_details}")
+                    print(f"  Created At   : {convert_utc_to_local_display(contact_details['created_at'])}")
                     print("-----------------------")
                 else:
-                     # This case should ideally not be reached if select_contact_by_search returns a valid ID
                     print(f"Contact with ID {contact_id_selection} not found.")
 
             elif choice == '4': # Update Contact (by search/ID)
@@ -590,9 +747,9 @@ def handle_contacts_menu():
 
                 success = update_contact(contact_id, **update_params)
                 if success:
-                    print(f"Contact with ID {contact_id} updated successfully.")
+                    print(f"SUCCESS: Contact with ID {contact_id} updated.")
                 else:
-                    print(f"Failed to update contact with ID {contact_id}. Ensure email is unique and account ID is valid.") # DAL prints specific error
+                    print(f"FAILED: Could not update contact with ID {contact_id}. Ensure email is unique and account ID is valid.") # DAL prints specific error
 
             elif choice == '5': # Delete Contact (by search/ID)
                 print("\n--- Delete Contact ---")
@@ -605,9 +762,9 @@ def handle_contacts_menu():
 
                 success = delete_contact(contact_id)
                 if success:
-                    print(f"Contact with ID {contact_id} deleted successfully.")
+                    print(f"SUCCESS: Contact with ID {contact_id} deleted.")
                 else:
-                    print(f"Failed to delete contact with ID {contact_id}. It might not exist.")
+                    print(f"FAILED: Could not delete contact with ID {contact_id}. It might not exist.")
 
             elif choice == '6': # Back
                 break
@@ -658,21 +815,119 @@ def handle_opportunities_menu():
 
                 opportunity_id = create_opportunity(name, description, amount, close_date, account_id, contact_id)
                 if opportunity_id:
-                    print(f"Opportunity '{name}' created successfully with ID: {opportunity_id}")
+                    print(f"SUCCESS: Opportunity '{name}' created with ID: {opportunity_id}")
                 else:
-                    print(f"Failed to create opportunity '{name}'. Ensure account ID is valid.") # DAL prints specific error
+                    print(f"FAILED: Could not create opportunity '{name}'. Ensure account ID is valid.") # DAL prints specific error
 
             elif choice == '2': # List Opportunities
                 opportunities = list_opportunities()
                 if opportunities:
-                    print("\n--- Opportunities ---")
-                    for opp in opportunities:
-                        print(f"ID: {opp['opportunity_id']}, Name: {opp['name']}, Amount: {opp['amount']}, Close Date: {opp['close_date']}, Account ID: {opp['account_id']}, Contact ID: {opp['contact_id']}, Created: {opp['created_at']}")
-                    print("---------------------")
+                    # Debug: Print first opportunity raw data
+                    print("\nDEBUG - Raw opportunity data:")
+                    first_opp = opportunities[0]
+                    print(f"Type: {type(first_opp)}")
+                    print(f"Keys: {list(first_opp.keys()) if hasattr(first_opp, 'keys') else 'No keys method'}")
+                    print(f"Dict representation: {dict(first_opp) if hasattr(first_opp, '__iter__') else 'Cannot convert to dict'}")
+                    
+                    # Additional logging for each field access
+                    print("\nDEBUG - Key checks:")
+                    for key in ['opportunity_id', 'name', 'account_id', 'contact_id', 'stage', 'status', 'amount', 'created_at']:
+                        try:
+                            print(f"Key '{key}' exists: {key in first_opp}, Value: {first_opp[key] if key in first_opp else 'N/A'}")
+                        except Exception as e:
+                            print(f"Error accessing key '{key}': {str(e)}")
+                    
+                    print("End DEBUG\n")
+                    
+                    print("\n--- All Opportunities ---")
+                    padding = 2
+
+                    # Headers
+                    id_header = "ID"
+                    name_header = "Name"
+                    account_header = "Account"
+                    contact_header = "Contact"
+                    value_header = "Value"
+                    created_at_header = "Created At" # New header
+
+                    # Initialize max lengths with header lengths
+                    max_id_len = len(id_header)
+                    max_name_len = len(name_header)
+                    max_account_len = len(account_header)
+                    max_contact_len = len(contact_header)
+                    max_value_len = len(value_header)
+                    max_created_at_len = len(created_at_header) # New max length
+
+                    processed_opportunities = []
+                    for opp in opportunities: # opp is an sqlite3.Row object
+                        try:
+                            # Direct access without checking 'in' since sqlite3.Row doesn't support it
+                            opp_id_str = str(opp['opportunity_id'])
+                            opp_name_str = opp['name'] if opp['name'] is not None else "N/A"
+                            
+                            account_display = "N/A"
+                            if opp['account_id'] is not None:
+                                acc = get_account(opp['account_id'])
+                                if acc:
+                                    account_display = f"{acc['name']} (ID: {opp['account_id']})"
+                                else:
+                                    account_display = f"(ID: {opp['account_id']}) (Not Found)"
+                            
+                            contact_display = "N/A"
+                            if opp['contact_id'] is not None:
+                                con = get_contact(opp['contact_id'])
+                                if con:
+                                    contact_display = f"{con['first_name']} {con['last_name']} (ID: {opp['contact_id']})"
+                                else:
+                                    contact_display = f"(ID: {opp['contact_id']}) (Not Found)"
+                            
+                            # Use amount field for value display
+                            value_str = str(opp['amount']) if opp['amount'] is not None else "N/A"
+                            
+                            # Convert 'created_at' to local timezone display
+                            created_at_display = convert_utc_to_local_display(opp['created_at']) if opp['created_at'] else "N/A"
+                        except Exception as e:
+                            print(f"ERROR processing opportunity: {str(e)}")
+                            continue
+
+                        processed_opportunities.append({
+                            'id': opp_id_str,
+                            'name': opp_name_str,
+                            'account': account_display,
+                            'contact': contact_display,
+                            'value': value_str,
+                            'created_at': created_at_display # Add to processed data
+                        })
+
+                        # Update max lengths based on data
+                        max_id_len = max(max_id_len, len(opp_id_str))
+                        max_name_len = max(max_name_len, len(opp_name_str))
+                        max_account_len = max(max_account_len, len(account_display))
+                        max_contact_len = max(max_contact_len, len(contact_display))
+                        max_value_len = max(max_value_len, len(value_str))
+                        max_created_at_len = max(max_created_at_len, len(created_at_display)) # Update for new column
+
+                    # Add padding to max lengths to get column widths
+                    id_col_width = max_id_len + padding
+                    name_col_width = max_name_len + padding
+                    account_col_width = max_account_len + padding
+                    contact_col_width = max_contact_len + padding
+                    value_col_width = max_value_len + padding
+                    created_at_col_width = max_created_at_len + padding # New column width
+
+                    # Construct header string and print
+                    header_format = f"{{:<{id_col_width}}} | {{:<{name_col_width}}} | {{:<{account_col_width}}} | {{:<{contact_col_width}}} | {{:<{value_col_width}}} | {{:<{created_at_col_width}}}"
+                    header_line = header_format.format(id_header, name_header, account_header, contact_header, value_header, created_at_header)
+                    print(header_line)
+                    print("-" * len(header_line))
+
+                    # Print data rows
+                    for popp in processed_opportunities:
+                        print(header_format.format(popp['id'], popp['name'], popp['account'], popp['contact'], popp['value'], popp['created_at']))
+                    print("-" * len(header_line))
                 else:
                     print("No opportunities found.")
-
-            elif choice == '3': # Get Opportunity (by search/ID)
+            elif choice == '3': # Get Opportunity
                 print("\n--- Get Opportunity ---")
                 opportunity_id_selection = select_opportunity_by_search("Enter Opportunity Name, Description, or ID to get (or 'back'): ")
                 if opportunity_id_selection == 'back': continue
@@ -680,20 +935,35 @@ def handle_opportunities_menu():
                      print("Opportunity selection is required to get details.")
                      continue
 
-                opportunity = get_opportunity(opportunity_id_selection)
-                if opportunity:
+                opportunity_details = get_opportunity(opportunity_id_selection) # Renamed to avoid conflict
+                if opportunity_details:
                     print("\n--- Opportunity Details ---")
-                    print(f"ID: {opportunity['opportunity_id']}")
-                    print(f"Name: {opportunity['name']}")
-                    print(f"Description: {opportunity['description']}")
-                    print(f"Amount: {opportunity['amount']}")
-                    print(f"Close Date: {opportunity['close_date']}")
-                    print(f"Account ID: {opportunity['account_id']}")
-                    print(f"Contact ID: {opportunity['contact_id']}")
-                    print(f"Created: {opportunity['created_at']}")
+                    print(f"  ID           : {opportunity_details['opportunity_id']}")
+                    print(f"  Name         : {opportunity_details['name']}")
+                    print(f"  Description  : {opportunity_details['description'] or 'N/A'}")
+                    print(f"  Amount       : {opportunity_details['amount'] or 'N/A'}")
+                    print(f"  Close Date   : {opportunity_details['close_date'] or 'N/A'}")
+                    
+                    account_display_details = "N/A"
+                    if opportunity_details['account_id']:
+                        acc = get_account(opportunity_details['account_id'])
+                        if acc:
+                            account_display_details = f"{acc['name']} (ID: {acc['account_id']})"
+                        else:
+                            account_display_details = f"Unknown Account (ID: {opportunity_details['account_id']})"
+                    print(f"  Account      : {account_display_details}")
+
+                    contact_display_details = "N/A"
+                    if opportunity_details['contact_id']:
+                        contact_obj = get_contact(opportunity_details['contact_id'])
+                        if contact_obj:
+                            contact_display_details = f"{contact_obj['first_name']} {contact_obj['last_name']} (ID: {contact_obj['contact_id']})"
+                        else:
+                            contact_display_details = f"Unknown Contact (ID: {opportunity_details['contact_id']})"
+                    print(f"  Contact      : {contact_display_details}")
+                    print(f"  Created At   : {convert_utc_to_local_display(opportunity_details['created_at'])}")
                     print("-------------------------")
                 else:
-                     # This case should ideally not be reached if select_opportunity_by_search returns a valid ID
                     print(f"Opportunity with ID {opportunity_id_selection} not found.")
 
             elif choice == '4': # Update Opportunity (by search/ID)
@@ -803,9 +1073,9 @@ def handle_opportunities_menu():
 
                 success = update_opportunity(opportunity_id, **update_params)
                 if success:
-                    print(f"Opportunity with ID {opportunity_id} updated successfully.")
+                    print(f"SUCCESS: Opportunity with ID {opportunity_id} updated.")
                 else:
-                    print(f"Failed to update opportunity with ID {opportunity_id}. Ensure account/contact IDs are valid.") # DAL prints specific error
+                    print(f"FAILED: Could not update opportunity with ID {opportunity_id}. Ensure account/contact IDs are valid.") # DAL prints specific error
 
 
             elif choice == '5': # Delete Opportunity (by search/ID)
@@ -819,9 +1089,9 @@ def handle_opportunities_menu():
 
                 success = delete_opportunity(opportunity_id)
                 if success:
-                    print(f"Opportunity with ID {opportunity_id} deleted successfully.")
+                    print(f"SUCCESS: Opportunity with ID {opportunity_id} deleted.")
                 else:
-                    print(f"Failed to delete opportunity with ID {opportunity_id}. It might not exist.")
+                    print(f"FAILED: Could not delete opportunity with ID {opportunity_id}. It might not exist.")
 
             elif choice == '6': # Back
                 break
