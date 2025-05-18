@@ -19,6 +19,10 @@ venv.bak/
 *.db3
 data/crm.db
 
+# But don't ignore the data directory itself
+!data/
+!data/.gitkeep
+
 # IDE / Editor
 .vscode/
 .idea/
