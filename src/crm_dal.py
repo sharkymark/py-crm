@@ -5,7 +5,7 @@ import sqlite3
 from .database import get_db_connection
 
 # --- Account Operations ---
-def create_account(name, industry):
+def create_account(name, industry, description=None, website=None, street=None, city=None, state=None, zip=None, country=None):
     """
     Create a new account in the database.
     Returns the account_id on success, None on failure.
@@ -16,7 +16,12 @@ def create_account(name, industry):
 
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO Accounts (name, industry) VALUES (?, ?)", (name, industry))
+        cursor.execute(
+            """INSERT INTO Accounts 
+               (name, industry, description, website, street, city, state, zip, country) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""", 
+            (name, industry, description, website, street, city, state, zip, country)
+        )
         conn.commit()
         account_id = cursor.lastrowid
         return account_id
@@ -97,7 +102,8 @@ def search_accounts(query):
         if conn: conn.close()
 
 
-def update_account(account_id, name=None, industry=None):
+def update_account(account_id, name=None, industry=None, description=None, website=None, 
+                street=None, city=None, state=None, zip=None, country=None):
     """
     Update an existing account in the database.
     Returns True if updated, False otherwise.
@@ -116,6 +122,27 @@ def update_account(account_id, name=None, industry=None):
     if industry is not None:
         updates.append("industry = ?")
         params.append(industry)
+    if description is not None:
+        updates.append("description = ?")
+        params.append(description)
+    if website is not None:
+        updates.append("website = ?")
+        params.append(website)
+    if street is not None:
+        updates.append("street = ?")
+        params.append(street)
+    if city is not None:
+        updates.append("city = ?")
+        params.append(city)
+    if state is not None:
+        updates.append("state = ?")
+        params.append(state)
+    if zip is not None:
+        updates.append("zip = ?")
+        params.append(zip)
+    if country is not None:
+        updates.append("country = ?")
+        params.append(country)
 
     if not updates:
         # No fields to update
@@ -158,7 +185,8 @@ def delete_account(account_id):
         if conn: conn.close()
 
 # --- Contact Operations ---
-def create_contact(first_name, last_name, email, phone, account_id):
+def create_contact(first_name, last_name, email, phone, account_id, title=None, description=None, 
+                website=None, street=None, city=None, state=None, zip=None, country=None):
     """
     Create a new contact in the database.
     Returns the contact_id on success, None on failure.
@@ -169,7 +197,13 @@ def create_contact(first_name, last_name, email, phone, account_id):
 
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO Contacts (first_name, last_name, email, phone, account_id) VALUES (?, ?, ?, ?, ?)", (first_name, last_name, email, phone, account_id))
+        cursor.execute("""
+            INSERT INTO Contacts 
+            (first_name, last_name, email, phone, account_id, title, description, 
+            website, street, city, state, zip, country) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (first_name, last_name, email, phone, account_id, title, description, 
+              website, street, city, state, zip, country))
         conn.commit()
         contact_id = cursor.lastrowid
         return contact_id
@@ -273,7 +307,8 @@ def get_contacts_by_account(account_id):
         if conn: conn.close()
 
 
-def update_contact(contact_id, first_name=None, last_name=None, email=None, phone=None, account_id=None):
+def update_contact(contact_id, first_name=None, last_name=None, email=None, phone=None, account_id=None,
+                title=None, description=None, website=None, street=None, city=None, state=None, zip=None, country=None):
     """
     Update an existing contact in the database.
     Returns True if updated, False otherwise.
@@ -301,6 +336,30 @@ def update_contact(contact_id, first_name=None, last_name=None, email=None, phon
     if account_id is not None:
         updates.append("account_id = ?")
         params.append(account_id)
+    if title is not None:
+        updates.append("title = ?")
+        params.append(title)
+    if description is not None:
+        updates.append("description = ?")
+        params.append(description)
+    if website is not None:
+        updates.append("website = ?")
+        params.append(website)
+    if street is not None:
+        updates.append("street = ?")
+        params.append(street)
+    if city is not None:
+        updates.append("city = ?")
+        params.append(city)
+    if state is not None:
+        updates.append("state = ?")
+        params.append(state)
+    if zip is not None:
+        updates.append("zip = ?")
+        params.append(zip)
+    if country is not None:
+        updates.append("country = ?")
+        params.append(country)
 
     if not updates:
         # No fields to update

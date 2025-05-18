@@ -19,6 +19,9 @@ venv.bak/
 *.db3
 data/crm.db
 
+# Files
+*.csv
+
 # But don't ignore the data directory itself
 !data/
 !data/.gitkeep

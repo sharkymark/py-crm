@@ -7,6 +7,9 @@ A Python command-line application for managing Accounts, Contacts, and Opportuni
 - **CRUD Operations**: Create, Read, Update, and Delete functionality for Accounts, Contacts, and Opportunities.
 - **Data Storage**: Uses SQLite3 for persistent storage in a local file.
 - **Menu-Driven Interface**: Interact with the application through simple menus.
+- **Export to CSV**: Export data to CSV files for easy sharing and reporting.
+- **Search Functionality**: Search for Accounts, Contacts, and Opportunities by name or ID.
+- **Schema Migration**: Automatically migrate the database schema to the latest version on startup.
 
 ## Requirements
 
@@ -52,9 +55,13 @@ You can use database tools like [DBeaver](https://dbeaver.io/) or the `sqlite3` 
 
 ## Environment Variables
 
-See `devcontainer.json` for environment variables required.
+See `devcontainer.json` for gitenvironment variables.
 
 ## AI Agents
+
+[GitHub Copilot](https://docs.github.com/en/copilot)
+
+[Copilot Agent Mode](https://code.visualstudio.com/docs/copilot/chat/chat-agent-mode)
 
 [Aider commands](https://aider.chat/docs/usage/commands.html)
 
