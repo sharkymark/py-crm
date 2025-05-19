@@ -81,7 +81,8 @@ def migrate_database():
             "city": "TEXT",
             "state": "TEXT",
             "zip": "TEXT",
-            "country": "TEXT"
+            "country": "TEXT",
+            "industry_id": "INTEGER" # New column for picklist reference
         }
         
         # Add any missing columns
@@ -89,6 +90,47 @@ def migrate_database():
             if column not in account_columns:
                 print(f"Adding column '{column}' to Accounts table")
                 cursor.execute(f"ALTER TABLE Accounts ADD COLUMN {column} {data_type}")
+        
+        # Check if the legacy industry column exists
+        if "industry" in account_columns:
+            # We need to remove the industry column, which requires recreating the table
+            # in SQLite (since SQLite doesn't support DROP COLUMN directly)
+            print("Removing legacy industry column from Accounts table...")
+            
+            # First, create a temporary table without the industry column
+            cursor.execute("""
+                CREATE TABLE Accounts_new (
+                    account_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    industry_id INTEGER,
+                    description TEXT,
+                    website TEXT,
+                    street TEXT,
+                    city TEXT,
+                    state TEXT,
+                    zip TEXT,
+                    country TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (industry_id) REFERENCES PicklistValue(picklist_value_id)
+                )
+            """)
+            
+            # Copy data from the old table to the new one
+            cursor.execute("""
+                INSERT INTO Accounts_new (
+                    account_id, name, industry_id, description, website, street, city, 
+                    state, zip, country, created_at
+                )
+                SELECT 
+                    account_id, name, industry_id, description, website, street, city, 
+                    state, zip, country, created_at
+                FROM Accounts
+            """)
+            
+            # Drop the old table and rename the new one
+            cursor.execute("DROP TABLE Accounts")
+            cursor.execute("ALTER TABLE Accounts_new RENAME TO Accounts")
+            print("Legacy industry column removed successfully")
         
         # Migration for Contacts table
         print("Checking Contacts table schema...")
@@ -112,8 +154,33 @@ def migrate_database():
                 print(f"Adding column '{column}' to Contacts table")
                 cursor.execute(f"ALTER TABLE Contacts ADD COLUMN {column} {data_type}")
         
-        # No need to check Opportunities as it already has the description field
-        # and no other new fields were mentioned
+        # Migration for Opportunities table
+        print("Checking Opportunities table schema...")
+        opportunity_columns = get_table_columns(cursor, "Opportunities")
+        
+        # Define the columns that should be in the Opportunities table
+        required_opportunity_columns = {
+            "stage_id": "INTEGER" # New column for stage picklist reference
+        }
+        
+        # Add any missing columns
+        for column, data_type in required_opportunity_columns.items():
+            if column not in opportunity_columns:
+                print(f"Adding column '{column}' to Opportunities table")
+                cursor.execute(f"ALTER TABLE Opportunities ADD COLUMN {column} {data_type}")
+        
+        # Set up picklist tables
+        print("Setting up picklist tables...")
+        from .picklist import create_picklist_tables, migrate_existing_data
+        
+        # Create the picklist tables
+        create_picklist_tables()
+        
+        # Skip initialization of default picklists - use admin menu instead
+        print("NOTE: Default picklists initialization skipped - use Admin menu to manage picklists")
+        
+        # Migrate existing data to use picklists
+        migrate_existing_data()
         
         # Commit all changes
         conn.commit()

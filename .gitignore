@@ -12,19 +12,25 @@ ENV/
 env.bak/
 venv.bak/
 
-# Databases
-*.sqlite
-*.sqlite3
-*.db
-*.db3
-data/crm.db
-
-# Files
+# Ignore all CSV files
 *.csv
 
-# But don't ignore the data directory itself
-!data/
+# Ignore all database files
+*.db
+*.db3
+*.sqlite
+*.sqlite3
+
+# Track the data directory structure
+# But ignore everything in it by default
+data/*
+data/backups/*
+
+# Except for these specific files that we want to track
+!data/picklist_industry.csv
+!data/picklist_stage.csv
 !data/.gitkeep
+!data/backups/.gitkeep
 
 # IDE / Editor
 .vscode/
