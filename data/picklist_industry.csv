@@ -1,0 +1,13 @@
+picklist_name,entity_type,description,value,display_order,is_default,is_active
+industry,account,Industry,Financial Services,1,false,true
+industry,account,Industry,Technology,2,false,true
+industry,account,Industry,Healthcare/Life Sciences,3,false,true
+industry,account,Industry,Manufacturing/Industrial,4,false,true
+industry,account,Industry,Retail/Consumer Goods,5,false,true
+industry,account,Industry,Telecommunications,6,false,true
+industry,account,Industry,Energy/Utilities,7,false,true
+industry,account,Industry,Transportation/Logistics,8,false,true
+industry,account,Industry,Government/Public Sector,9,false,true
+industry,account,Industry,Education,10,false,true
+industry,account,Industry,Media/Entertainment,11,false,true
+

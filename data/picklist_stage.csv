@@ -1,0 +1,6 @@
+picklist_name,entity_type,description,value,display_order,is_default,is_active
+stage,opportunity,Stage,Discovery,1,false,true
+stage,opportunity,Stage,Qualification,2,false,true
+stage,opportunity,Stage,Negotiation,3,false,true
+stage,opportunity,Stage,Closed Won,4,false,true
+stage,opportunity,Stage,Closed Lost,5,false,true

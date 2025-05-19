@@ -34,11 +34,37 @@ def create_tables():
     cursor = conn.cursor()
 
     try:
+        # Create picklist tables
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS PicklistType (
+                picklist_type_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT,
+                entity_type TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS PicklistValue (
+                picklist_value_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                picklist_type_id INTEGER NOT NULL,
+                value TEXT NOT NULL,
+                display_order INTEGER DEFAULT 0,
+                is_default BOOLEAN DEFAULT 0,
+                is_active BOOLEAN DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (picklist_type_id) REFERENCES PicklistType(picklist_type_id),
+                UNIQUE (picklist_type_id, value)
+            )
+        """)
+
+        # Create main tables
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS Accounts (
                 account_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                industry TEXT,
+                industry_id INTEGER,
                 description TEXT,
                 website TEXT,
                 street TEXT,
@@ -46,7 +72,8 @@ def create_tables():
                 state TEXT,
                 zip TEXT,
                 country TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (industry_id) REFERENCES PicklistValue(picklist_value_id)
             )
         """)
 
@@ -80,9 +107,11 @@ def create_tables():
                 close_date DATE,
                 account_id INTEGER,
                 contact_id INTEGER,
+                stage_id INTEGER,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (account_id) REFERENCES Accounts (account_id),
-                FOREIGN KEY (contact_id) REFERENCES Contacts (contact_id)
+                FOREIGN KEY (contact_id) REFERENCES Contacts (contact_id),
+                FOREIGN KEY (stage_id) REFERENCES PicklistValue(picklist_value_id)
             )
         """)
 
@@ -111,16 +140,23 @@ def check_schema():
     try:
         # Check Accounts table
         cursor.execute("PRAGMA table_info(Accounts)")
-        columns = [row[1] for row in cursor.fetchall()]
-        # Check for any of the new columns
-        if "description" not in columns or "website" not in columns:
+        accounts_columns = [row[1] for row in cursor.fetchall()]
+        # Check for any of the new columns including industry_id
+        if "description" not in accounts_columns or "website" not in accounts_columns or "industry_id" not in accounts_columns:
             return True
         
         # Check Contacts table
         cursor.execute("PRAGMA table_info(Contacts)")
-        columns = [row[1] for row in cursor.fetchall()]
+        contacts_columns = [row[1] for row in cursor.fetchall()]
         # Check for any of the new columns
-        if "title" not in columns or "description" not in columns:
+        if "title" not in contacts_columns or "description" not in contacts_columns:
+            return True
+        
+        # Check Opportunities table
+        cursor.execute("PRAGMA table_info(Opportunities)")
+        opportunities_columns = [row[1] for row in cursor.fetchall()]
+        # Check for the stage_id column
+        if "stage_id" not in opportunities_columns:
             return True
             
         return False  # No migration needed
@@ -145,6 +181,10 @@ def initialize_database():
         except ImportError:
             print("Error: Could not import migration module.")
             print("Make sure migrate_db.py is in the same directory.")
+        except Exception as e:
+            print(f"Error during migration: {e}")
+            print("Attempting to continue with create_tables()...")
+            create_tables()
     else:
         # Just create tables if needed
         create_tables()

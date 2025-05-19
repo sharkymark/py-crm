@@ -5,9 +5,15 @@ import sqlite3
 from .database import get_db_connection
 
 # --- Account Operations ---
-def create_account(name, industry, description=None, website=None, street=None, city=None, state=None, zip=None, country=None):
+def create_account(name, industry_id=None, description=None, website=None, street=None, city=None, state=None, zip=None, country=None):
     """
     Create a new account in the database.
+    
+    Args:
+        name (str): The account name (required)
+        industry_id (int): The industry picklist ID (optional)
+        description, website, street, city, state, zip, country: Optional account details
+    
     Returns the account_id on success, None on failure.
     """
     conn = get_db_connection()
@@ -18,9 +24,9 @@ def create_account(name, industry, description=None, website=None, street=None, 
     try:
         cursor.execute(
             """INSERT INTO Accounts 
-               (name, industry, description, website, street, city, state, zip, country) 
+               (name, industry_id, description, website, street, city, state, zip, country) 
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""", 
-            (name, industry, description, website, street, city, state, zip, country)
+            (name, industry_id, description, website, street, city, state, zip, country)
         )
         conn.commit()
         account_id = cursor.lastrowid
@@ -102,10 +108,13 @@ def search_accounts(query):
         if conn: conn.close()
 
 
-def update_account(account_id, name=None, industry=None, description=None, website=None, 
+def update_account(account_id, name=None, industry_id=None, description=None, website=None, 
                 street=None, city=None, state=None, zip=None, country=None):
     """
     Update an existing account in the database.
+    
+    The industry_id parameter should be an integer with the picklist_value_id
+    
     Returns True if updated, False otherwise.
     """
     conn = get_db_connection()
@@ -119,9 +128,9 @@ def update_account(account_id, name=None, industry=None, description=None, websi
     if name is not None:
         updates.append("name = ?")
         params.append(name)
-    if industry is not None:
-        updates.append("industry = ?")
-        params.append(industry)
+    if industry_id is not None:
+        updates.append("industry_id = ?")
+        params.append(industry_id)
     if description is not None:
         updates.append("description = ?")
         params.append(description)
@@ -404,18 +413,44 @@ def delete_contact(contact_id):
         if conn: conn.close()
 
 # --- Opportunity Operations ---
-def create_opportunity(name, description, amount, close_date, account_id, contact_id):
+def create_opportunity(name, description, amount, close_date, account_id, contact_id, stage=None):
     """
     Create a new opportunity in the database.
+    
+    The stage parameter can be either:
+    - A picklist value ID (integer) already looked up
+    - A string value, in which case we'll look up the ID or use the default stage
+    - None, in which case we'll use the default stage
+    
     Returns the opportunity_id on success, None on failure.
     """
+    from .picklist import get_picklist_id_by_value, get_picklist_values
+    
     conn = get_db_connection()
     if conn is None:
         return None
 
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO Opportunities (name, description, amount, close_date, account_id, contact_id) VALUES (?, ?, ?, ?, ?, ?)", (name, description, amount, close_date, account_id, contact_id))
+        # Handle stage as picklist
+        stage_id = None
+        if stage:
+            if isinstance(stage, int):
+                stage_id = stage
+            else:
+                stage_id = get_picklist_id_by_value('stage', stage)
+        else:
+            # Use default stage if none provided
+            stages = get_picklist_values('stage')
+            if stages:
+                default_stage = next((s for s in stages if s['is_default']), stages[0] if stages else None)
+                if default_stage:
+                    stage_id = default_stage['picklist_value_id']
+
+        cursor.execute(
+            "INSERT INTO Opportunities (name, description, amount, close_date, account_id, contact_id, stage_id) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+            (name, description, amount, close_date, account_id, contact_id, stage_id)
+        )
         conn.commit()
         opportunity_id = cursor.lastrowid
         return opportunity_id
@@ -519,11 +554,19 @@ def get_opportunities_by_account(account_id):
         if conn: conn.close()
 
 
-def update_opportunity(opportunity_id, name=None, description=None, amount=None, close_date=None, account_id=None, contact_id=None):
+def update_opportunity(opportunity_id, name=None, description=None, amount=None, close_date=None, account_id=None, contact_id=None, stage=None):
     """
     Update an existing opportunity in the database.
+    
+    The stage parameter can be either:
+    - A picklist value ID (integer) already looked up
+    - A string value, in which case we'll look up the ID
+    - None, in which case we won't update the stage
+    
     Returns True if updated, False otherwise.
     """
+    from .picklist import get_picklist_id_by_value
+    
     conn = get_db_connection()
     if conn is None:
         return False
@@ -550,6 +593,17 @@ def update_opportunity(opportunity_id, name=None, description=None, amount=None,
     if contact_id is not None:
         updates.append("contact_id = ?")
         params.append(contact_id)
+    if stage is not None:
+        # Handle stage as picklist
+        stage_id = None
+        if isinstance(stage, int):
+            stage_id = stage
+        else:
+            stage_id = get_picklist_id_by_value('stage', stage)
+            
+        if stage_id:
+            updates.append("stage_id = ?")
+            params.append(stage_id)
 
     if not updates:
         # No fields to update

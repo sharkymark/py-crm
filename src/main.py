@@ -77,7 +77,8 @@ def display_main_menu():
     print("3. Manage Opportunities")
     print("4. Summary")
     print("5. Export")
-    print("6. Exit")
+    print("6. Admin")
+    print("7. Exit")
     print("----------------------------")
 
 def display_accounts_menu():
@@ -168,7 +169,8 @@ def get_multiline_input(prompt):
         str or None: The multi-line input or None if user left it empty
         'back': If the user entered 'back' to go back
     """
-    print(f"{prompt} (Type 'DONE' on a new line when finished, or 'BACK' to go back)")
+    print(f"{prompt} (Type 'DONE' on a new line when finished to save, or immediately type 'DONE' to keep existing content)")
+    print(f"(Type 'BACK' to go back to the previous screen)")
     lines = []
     
     while True:
@@ -189,6 +191,7 @@ def get_multiline_input(prompt):
     result = '\n'.join(lines)
     
     # If the result is empty, return None
+    # This means the user entered DONE immediately, which will keep the existing value
     if not result.strip():
         return None
     
@@ -240,7 +243,14 @@ def select_account_by_search(prompt="Enter Account Name or ID (or 'back'): "):
                 else:
                     print(f"Found {len(accounts)} matching accounts:")
                     for acc in accounts:
-                        print(f"  ID: {acc['account_id']}, Name: {acc['name']}, Industry: {acc['industry']}")
+                        # Get industry value from picklist
+                        from .picklist import get_picklist_value_by_id
+                        industry_display = "N/A"
+                        if acc['industry_id']:  # Using direct access instead of .get()
+                            industry_value = get_picklist_value_by_id(acc['industry_id'])
+                            if industry_value:
+                                industry_display = industry_value
+                        print(f"  ID: {acc['account_id']}, Name: {acc['name']}, Industry: {industry_display}")
                     select_id_input = get_integer_input("Enter the ID of the account to select (or 'back'): ")
                     if select_id_input == 'back':
                         return 'back'
@@ -400,7 +410,14 @@ def handle_summary_menu():
         print("\n--- Accounts Summary ---")
         if matching_accounts:
             for acc in matching_accounts:
-                print(f"  Account: {acc['name']} (ID: {acc['account_id']}) - Industry: {acc['industry'] or 'N/A'}")
+                # Get industry value from picklist
+                from .picklist import get_picklist_value_by_id
+                industry_display = "N/A"
+                if acc['industry_id']:  # Using direct access instead of .get()
+                    industry_value = get_picklist_value_by_id(acc['industry_id'])
+                    if industry_value:
+                        industry_display = industry_value
+                print(f"  Account: {acc['name']} (ID: {acc['account_id']}) - Industry: {industry_display}")
                 
                 contacts_for_account = get_contacts_by_account(acc['account_id'])
                 if contacts_for_account:
@@ -491,7 +508,13 @@ def handle_accounts_menu():
                 if not name:
                     print("Account name is required.")
                     continue
-                industry = input("Enter account industry (optional): ").strip() or None
+                
+                # Use picklist for industry selection
+                print("\n--- Select Industry ---")
+                from .picklist import get_picklist_selection
+                industry_id, industry_name = get_picklist_selection('industry', "Select an industry for this account")
+                if industry_id is None and industry_name is None:  # User entered 'back'
+                    continue
                 description = get_multiline_input("Enter account description (optional):")
                 if description == 'back':
                     continue
@@ -502,7 +525,7 @@ def handle_accounts_menu():
                 zip_code = input("Enter zip/postal code (optional): ").strip() or None
                 country = input("Enter country (optional): ").strip() or None
                 
-                account_id = create_account(name, industry, description, website, street, city, state, zip_code, country)
+                account_id = create_account(name, industry_id, description, website, street, city, state, zip_code, country)
                 if account_id:
                     print(f"SUCCESS: Account '{name}' created with ID: {account_id}")
                 else:
@@ -534,7 +557,14 @@ def handle_accounts_menu():
                     for account in accounts:
                         max_id_len = max(max_id_len, len(str(account['account_id'])) + padding)
                         max_name_len = max(max_name_len, len(account['name']) + padding)
-                        max_industry_len = max(max_industry_len, len(account['industry'] or 'N/A') + padding)
+                        # Get industry from picklist
+                        from .picklist import get_picklist_value_by_id
+                        industry_display = "N/A"
+                        if account['industry_id']:  # Using direct access instead of .get()
+                            industry_value = get_picklist_value_by_id(account['industry_id'])
+                            if industry_value:
+                                industry_display = industry_value
+                        max_industry_len = max(max_industry_len, len(industry_display) + padding)
                         
                         # Truncate description for display
                         description = truncate_text(account['description'] or 'N/A')
@@ -566,7 +596,13 @@ def handle_accounts_menu():
                     print(header)
                     print("-" * len(header))
                     for account in accounts:
-                        industry_display = account['industry'] or 'N/A'
+                        # Get industry from picklist
+                        from .picklist import get_picklist_value_by_id
+                        industry_display = "N/A"
+                        if account['industry_id']:  # Using direct access instead of .get()
+                            industry_value = get_picklist_value_by_id(account['industry_id'])
+                            if industry_value:
+                                industry_display = industry_value
                         description_display = truncate_text(account['description'] or 'N/A')
                         website_display = account['website'] or 'N/A'
                         
@@ -599,7 +635,17 @@ def handle_accounts_menu():
                     print("\n--- Account Details ---")
                     print(f"  ID         : {account['account_id']}")
                     print(f"  Name       : {account['name']}")
-                    print(f"  Industry   : {account['industry'] or 'N/A'}")
+                    
+                    # Display industry from picklist if available
+                    # Get industry from picklist
+                    from .picklist import get_picklist_value_by_id
+                    industry_display = "N/A"
+                    if account['industry_id']:  # Using direct access instead of .get()
+                        picklist_value = get_picklist_value_by_id(account['industry_id'])
+                        if picklist_value:
+                            industry_display = picklist_value
+                    
+                    print(f"  Industry   : {industry_display}")
                     print(f"  Description: {account['description'] or 'N/A'}")
                     print(f"  Website    : {account['website'] or 'N/A'}")
                     print(f"  Address    : {account['street'] or 'N/A'}")
@@ -644,10 +690,22 @@ def handle_accounts_menu():
                     print(f"Account with ID {account_id} not found.")
                     continue
 
+                # Get industry display value before showing account details
+                from .picklist import get_picklist_selection, get_picklist_value_by_id
+                
+                # Get current industry if any
+                industry_display = "N/A"
+                if account['industry_id']:  # Using direct access instead of .get()
+                    industry_value = get_picklist_value_by_id(account['industry_id'])
+                    if industry_value:
+                        industry_display = industry_value
+                elif 'industry' in account:  # Using 'in' operator instead of .get()
+                    industry_display = account['industry']
+                
                 print(f"\nCurrent Account Details:")
                 print(f"  ID: {account['account_id']}")
                 print(f"  Name: {account['name']}")
-                print(f"  Industry: {account['industry'] or 'N/A'}")
+                print(f"  Industry   : {industry_display}")
                 print(f"  Description: {account['description'] or 'N/A'}")
                 print(f"  Website: {account['website'] or 'N/A'}")
                 print(f"  Street: {account['street'] or 'N/A'}")
@@ -657,7 +715,16 @@ def handle_accounts_menu():
                 print(f"  Country: {account['country'] or 'N/A'}")
                 
                 new_name = input(f"Enter new name (leave blank to keep '{account['name']}'): ").strip() or None
-                new_industry = input(f"Enter new industry (leave blank to keep '{account['industry'] or 'N/A'}'): ").strip() or None
+                
+                # Use picklist for industry selection
+                print("\n--- Update Industry ---")
+                
+                # Reuse the industry_display variable for consistency
+                current_industry = industry_display
+                    
+                print(f"Current industry: {current_industry}")
+                new_industry_id, new_industry = get_picklist_selection('industry', "Select a new industry (leave blank to keep current)")
+                # If the user selected 'back', we'll handle it in the next step
                 
                 # Handle multi-line description
                 print(f"Current description: {account['description'] or 'N/A'}")
@@ -675,8 +742,8 @@ def handle_accounts_menu():
                 update_params = {}
                 if new_name is not None:
                     update_params['name'] = new_name
-                if new_industry is not None:
-                    update_params['industry'] = new_industry
+                if new_industry_id is not None:
+                    update_params['industry_id'] = new_industry_id
                 if new_description is not None:
                     update_params['description'] = new_description
                 if new_website is not None:
@@ -1100,11 +1167,17 @@ def handle_opportunities_menu():
                 # select_contact_by_search returns None if user leaves blank, which is okay for optional contact_id
                 contact_id = select_contact_by_search("Enter associated Contact Name, Email, or ID (optional, leave blank for none, or 'back'): ")
                 if contact_id == 'back': continue # Go back if user entered 'back' during contact selection
-
-
-                opportunity_id = create_opportunity(name, description, amount, close_date, account_id, contact_id)
+                
+                # Get stage from picklist
+                from .picklist import get_picklist_selection
+                print("\n--- Select Opportunity Stage ---")
+                stage_id, stage_value = get_picklist_selection('stage', "Select a stage for this opportunity")
+                if stage_id is None and stage_value is None:  # User entered 'back'
+                    continue
+                
+                opportunity_id = create_opportunity(name, description, amount, close_date, account_id, contact_id, stage_id)
                 if opportunity_id:
-                    print(f"SUCCESS: Opportunity '{name}' created with ID: {opportunity_id}")
+                    print(f"SUCCESS: Opportunity '{name}' created with ID: {opportunity_id} - Stage: {stage_value or 'Default'}")
                 else:
                     print(f"FAILED: Could not create opportunity '{name}'. Ensure account ID is valid.") # DAL prints specific error
 
@@ -1138,12 +1211,14 @@ def handle_opportunities_menu():
                     account_header = "Account"
                     contact_header = "Contact"
                     value_header = "Value"
-                    created_at_header = "Created At" # New header
+                    stage_header = "Stage"
+                    created_at_header = "Created At"
 
                     # Initialize max lengths with header lengths
                     max_id_len = len(id_header)
                     max_name_len = len(name_header)
                     max_description_len = len(description_header)
+                    max_stage_len = len(stage_header)
                     max_account_len = len(account_header)
                     max_contact_len = len(contact_header)
                     max_value_len = len(value_header)
@@ -1180,6 +1255,14 @@ def handle_opportunities_menu():
                             
                             # Convert 'created_at' to local timezone display
                             created_at_display = convert_utc_to_local_display(opp['created_at']) if opp['created_at'] else "N/A"
+                            
+                            # Get stage from picklist
+                            from .picklist import get_picklist_value_by_id
+                            stage_display = "N/A"
+                            if opp['stage_id']:  # Using direct access instead of .get()
+                                stage_value = get_picklist_value_by_id(opp['stage_id'])
+                                if stage_value:
+                                    stage_display = stage_value
                         except Exception as e:
                             print(f"ERROR processing opportunity: {str(e)}")
                             continue
@@ -1191,7 +1274,8 @@ def handle_opportunities_menu():
                             'account': account_display,
                             'contact': contact_display,
                             'value': value_str,
-                            'created_at': created_at_display # Add to processed data
+                            'stage': stage_display,
+                            'created_at': created_at_display
                         })
 
                         # Update max lengths based on data
@@ -1201,7 +1285,8 @@ def handle_opportunities_menu():
                         max_account_len = max(max_account_len, len(account_display))
                         max_contact_len = max(max_contact_len, len(contact_display))
                         max_value_len = max(max_value_len, len(value_str))
-                        max_created_at_len = max(max_created_at_len, len(created_at_display)) # Update for new column
+                        max_stage_len = max(max_stage_len, len(stage_display))
+                        max_created_at_len = max(max_created_at_len, len(created_at_display))
 
                     # Add padding to max lengths to get column widths
                     id_col_width = max_id_len + padding
@@ -1210,17 +1295,18 @@ def handle_opportunities_menu():
                     account_col_width = max_account_len + padding
                     contact_col_width = max_contact_len + padding
                     value_col_width = max_value_len + padding
-                    created_at_col_width = max_created_at_len + padding # New column width
+                    stage_col_width = max_stage_len + padding
+                    created_at_col_width = max_created_at_len + padding
 
                     # Construct header string and print
-                    header_format = f"{{:<{id_col_width}}} | {{:<{name_col_width}}} | {{:<{description_col_width}}} | {{:<{account_col_width}}} | {{:<{contact_col_width}}} | {{:<{value_col_width}}} | {{:<{created_at_col_width}}}"
-                    header_line = header_format.format(id_header, name_header, description_header, account_header, contact_header, value_header, created_at_header)
+                    header_format = f"{{:<{id_col_width}}} | {{:<{name_col_width}}} | {{:<{description_col_width}}} | {{:<{account_col_width}}} | {{:<{contact_col_width}}} | {{:<{value_col_width}}} | {{:<{stage_col_width}}} | {{:<{created_at_col_width}}}"
+                    header_line = header_format.format(id_header, name_header, description_header, account_header, contact_header, value_header, stage_header, created_at_header)
                     print(header_line)
                     print("-" * len(header_line))
 
                     # Print data rows
                     for popp in processed_opportunities:
-                        print(header_format.format(popp['id'], popp['name'], popp['description'], popp['account'], popp['contact'], popp['value'], popp['created_at']))
+                        print(header_format.format(popp['id'], popp['name'], popp['description'], popp['account'], popp['contact'], popp['value'], popp['stage'], popp['created_at']))
                     print("-" * len(header_line))
                 else:
                     print("No opportunities found.")
@@ -1240,6 +1326,15 @@ def handle_opportunities_menu():
                     print(f"  Description  : {opportunity_details['description'] or 'N/A'}")
                     print(f"  Amount       : {opportunity_details['amount'] or 'N/A'}")
                     print(f"  Close Date   : {opportunity_details['close_date'] or 'N/A'}")
+                    
+                    # Display stage if available
+                    from .picklist import get_picklist_value_by_id
+                    stage_display = "N/A"
+                    if opportunity_details['stage_id']:  # Using direct access instead of .get()
+                        stage_value = get_picklist_value_by_id(opportunity_details['stage_id'])
+                        if stage_value:
+                            stage_display = stage_value
+                    print(f"  Stage        : {stage_display}")
                     
                     account_display_details = "N/A"
                     if opportunity_details['account_id']:
@@ -1345,6 +1440,24 @@ def handle_opportunities_menu():
                      # User left the search blank. This means keep the old value.
                      # We don't add contact_id to update_params in this case.
                      pass # new_contact_id remains None, and we won't add it to update_params
+                
+                # Get stage from picklist
+                print("\n--- Update Opportunity Stage ---")
+                from .picklist import get_picklist_selection, get_picklist_value_by_id
+                
+                # Get current stage if any
+                current_stage = "Not set"
+                if opportunity['stage_id']:  # Using direct access instead of .get()
+                    current_stage_value = get_picklist_value_by_id(opportunity['stage_id'])
+                    if current_stage_value:
+                        current_stage = current_stage_value
+                
+                print(f"Current stage: {current_stage}")
+                new_stage_id, new_stage_value = get_picklist_selection('stage', f"Select a new stage (leave blank to keep current)")
+                
+                # If user selected 'back', continue the loop
+                if new_stage_id is None and new_stage_value is None:
+                    continue
 
 
                 update_params = {}
@@ -1367,6 +1480,10 @@ def handle_opportunities_menu():
                 # Only update contact_id if the user provided input during the selection process
                 if new_contact_id_selection is not None and new_contact_id_selection != 'back':
                      update_params['contact_id'] = new_contact_id
+                     
+                # Add stage_id if the user selected a new stage
+                if new_stage_id is not None:
+                    update_params['stage'] = new_stage_id
 
 
                 if not update_params:
@@ -1533,6 +1650,32 @@ def main():
     """
     # Ensure database tables exist and are properly migrated
     initialize_database()
+    
+    # Additional check to confirm picklist fields are present
+    import sqlite3
+    from .database import get_db_connection
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            # Check if Accounts.industry_id exists
+            cursor.execute("PRAGMA table_info(Accounts)")
+            account_cols = [row[1] for row in cursor.fetchall()]
+            if "industry_id" not in account_cols:
+                print("WARNING: industry_id column missing from Accounts table!")
+                print("This might indicate that database migration has not completed successfully.")
+            
+            # Check if Opportunities.stage_id exists
+            cursor.execute("PRAGMA table_info(Opportunities)")
+            opp_cols = [row[1] for row in cursor.fetchall()]
+            if "stage_id" not in opp_cols:
+                print("WARNING: stage_id column missing from Opportunities table!")
+                print("This might indicate that database migration has not completed successfully.")
+        except sqlite3.Error as e:
+            print(f"Error checking schema: {e}")
+        finally:
+            cursor.close()
+            conn.close()
 
     print("Welcome to the Simple CRM CLI Application!")
 
@@ -1551,7 +1694,12 @@ def main():
                 handle_summary_menu()
             elif choice == '5': # Handle Export
                 handle_export_menu()
-            elif choice == '6': # Handle Exit
+            elif choice == '6': # Handle Admin
+                # Import locally to avoid circular imports
+                import importlib
+                admin_module = importlib.import_module(".admin", package="src")
+                admin_module.handle_admin_menu()
+            elif choice == '7': # Handle Exit
                 graceful_exit()
             else:
                 print("Invalid choice. Please try again.")
